@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plugin_settings SYSTEM "../../../lib/pkp/dtd/pluginSettings.dtd">
+<plugin_settings>
+	<!-- Editáveis pelo gestor da revista. A pública OJSBR NÃO é setting de UI. -->
+	<setting type="string">
+		<name>ojsbrServices.connectorUrl</name>
+	</setting>
+	<setting type="string">
+		<name>ojsbrServices.token</name>
+	</setting>
+</plugin_settings>
