@@ -71,6 +71,15 @@ msgstr "Status"
 msgid "plugins.generic.ojsbrServices.editor.refresh"
 msgstr "Atualizar status"
 
+msgid "plugins.generic.ojsbrServices.editor.osTitle"
+msgstr "Ordem de serviço {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.backToList"
+msgstr "Voltar às submissões"
+
+msgid "plugins.generic.ojsbrServices.editor.pendingFiles"
+msgstr "Há arquivos ainda não gravados no GED; a OJSBR vai regularizar."
+
 msgid "plugins.generic.ojsbrServices.editor.signatureFailed"
 msgstr "A assinatura da resposta do conector é inválida. A ordem não foi aceita."
 
