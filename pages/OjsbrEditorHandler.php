@@ -48,6 +48,7 @@ class OjsbrEditorHandler extends Handler
             'criarUrl' => $this->pageUrl($request, 'criar'),
             'statusUrl' => $this->pageUrl($request, 'status'),
             'pollUrl' => $this->pageUrl($request, 'poll'),
+            'osUrl' => $this->pageUrl($request, 'os'),
             'rows' => $this->listSubmissionRows($contextId),
             'osRefs' => $this->plugin->getOsRefs($contextId),
             'hasSettings' => $this->plugin->getConnectorUrl($contextId) !== '' && $this->plugin->getPluginToken($contextId) !== '',
@@ -77,16 +78,19 @@ class OjsbrEditorHandler extends Handler
         $data = $response['json'];
         $numero = isset($data['numero']) ? (string) $data['numero'] : '';
         foreach ($payload['uploads'] as $sid => $files) {
-            if (!$files) {
-                continue;
+            if ($files) {
+                $this->plugin->callConnector(
+                    $contextId,
+                    'POST',
+                    '/plugin/v1/ordens/' . rawurlencode($numero) . '/itens/' . rawurlencode((string) $sid) . '/arquivos',
+                    null,
+                    $files
+                );
             }
-            $this->plugin->callConnector(
-                $contextId,
-                'POST',
-                '/plugin/v1/ordens/' . rawurlencode($numero) . '/itens/' . rawurlencode((string) $sid) . '/arquivos',
-                null,
-                $files
-            );
+            $fresh = $this->plugin->callConnector($contextId, 'GET', '/plugin/v1/ordens/' . rawurlencode($numero));
+            if (!empty($fresh['signed']) && is_array($fresh['json'])) {
+                $data = $fresh['json'];
+            }
         }
         foreach ($payload['json']['items'] as $item) {
             $this->plugin->persistOsRef($contextId, (string) $item['submissionId'], array(
@@ -97,10 +101,48 @@ class OjsbrEditorHandler extends Handler
                 'creditoFaltante' => isset($data['creditoFaltante']) ? $data['creditoFaltante'] : null,
             ));
         }
-        $this->redirectFlash($request, 'created', array(
-            'numero' => $numero,
-            'faltante' => isset($data['creditoFaltante']) ? (string) $data['creditoFaltante'] : '',
+        $this->redirectToOs($request, $numero, isset($data['creditoFaltante']) ? (string) $data['creditoFaltante'] : '');
+    }
+
+    public function os($args, $request)
+    {
+        $this->setupTemplate($request);
+        $context = $request->getContext();
+        $contextId = (int) $context->getId();
+        $numero = trim((string) $request->getUserVar('numero'));
+        if ($numero === '') {
+            $this->redirectFlash($request, 'missingItems');
+        }
+        $response = $this->plugin->callConnector($contextId, 'GET', '/plugin/v1/ordens/' . rawurlencode($numero));
+        if (empty($response['signed']) || !is_array($response['json'])) {
+            $this->redirectFlash($request, 'signatureFailed');
+        }
+        $data = $response['json'];
+        foreach (isset($data['itens']) ? $data['itens'] : array() as $item) {
+            $sid = isset($item['submissionId']) ? (string) $item['submissionId'] : '';
+            if ($sid === '') {
+                continue;
+            }
+            $this->plugin->persistOsRef($contextId, $sid, array(
+                'numero' => isset($data['numero']) ? $data['numero'] : $numero,
+                'origem' => 'os',
+                'situacaoProducao' => isset($data['situacaoProducao']) ? $data['situacaoProducao'] : null,
+                'situacaoFinanceira' => isset($data['situacaoFinanceira']) ? $data['situacaoFinanceira'] : null,
+                'itemStatus' => isset($item['status']) ? $item['status'] : null,
+                'creditoFaltante' => isset($data['creditoFaltante']) ? $data['creditoFaltante'] : null,
+            ));
+        }
+        $templateMgr = TemplateManager::getManager($request);
+        $templateMgr->assign(array(
+            'pageTitle' => __('plugins.generic.ojsbrServices.editor.osTitle', array('numero' => isset($data['numero']) ? $data['numero'] : $numero)),
+            'pluginPageUrl' => $this->pageUrl($request, 'index'),
+            'pollUrl' => $this->pageUrl($request, 'poll'),
+            'os' => $data,
+            'numero' => isset($data['numero']) ? $data['numero'] : $numero,
+            'flash' => (string) $request->getUserVar('flash'),
+            'flashFaltante' => (string) $request->getUserVar('faltante'),
         ));
+        $templateMgr->display($this->plugin->getTemplateResource('os.tpl'));
     }
 
     public function status($args, $request)
@@ -153,10 +195,7 @@ class OjsbrEditorHandler extends Handler
             ));
         }
         if ($redirect) {
-            $this->redirectFlash($request, 'created', array(
-                'numero' => $numero,
-                'faltante' => isset($data['creditoFaltante']) ? (string) $data['creditoFaltante'] : '',
-            ));
+            $this->redirectToOs($request, isset($data['numero']) ? $data['numero'] : $numero, isset($data['creditoFaltante']) ? (string) $data['creditoFaltante'] : '');
         }
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(array(
@@ -289,6 +328,14 @@ class OjsbrEditorHandler extends Handler
     private function pageUrl($request, $op)
     {
         return $request->getDispatcher()->url($request, ROUTE_PAGE, $request->getContext()->getPath(), 'ojsbr', $op);
+    }
+
+    private function redirectToOs($request, $numero, $faltante = '')
+    {
+        $url = $this->pageUrl($request, 'os');
+        $qs = array('numero' => $numero, 'flash' => 'created', 'faltante' => $faltante);
+        $request->redirectUrl($url . (strpos($url, '?') === false ? '?' : '&') . http_build_query($qs));
+        exit;
     }
 
     private function redirectFlash($request, $flash, $params = array())

@@ -22,7 +22,7 @@ class OjsbrServicesPlugin extends GenericPlugin
     const SETTING_OS_REFS = 'ojsbrServices.osPorSubmission';
 
     public static $SERVICE_OPS = array('heartbeat', 'callback', 'chave');
-    public static $EDITOR_OPS = array('index', 'criar', 'status', 'poll');
+    public static $EDITOR_OPS = array('index', 'criar', 'status', 'poll', 'os');
 
     public function register($category, $path, $mainContextId = null)
     {
@@ -155,8 +155,17 @@ class OjsbrServicesPlugin extends GenericPlugin
 
     public function getPinnedPublicKey()
     {
-        $path = $this->getPluginPath() . '/keys/ojsbr.pub';
-        return is_readable($path) ? (string) file_get_contents($path) : '';
+        foreach (array('/keys/ojsbr.pub.local', '/keys/ojsbr.pub') as $rel) {
+            $path = $this->getPluginPath() . $rel;
+            if (!is_readable($path)) {
+                continue;
+            }
+            $pem = (string) file_get_contents($path);
+            if ($pem !== '' && strpos($pem, 'PIN-PLACEHOLDER') === false) {
+                return $pem;
+            }
+        }
+        return '';
     }
 
     public function getTrustedPublicPems($contextId)
