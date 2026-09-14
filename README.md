@@ -24,7 +24,7 @@ ojsbr-services
 
 Release/tag por branch (`1.0.0-3.3`, `1.0.0-3.4`, `1.0.0-3.5`). Feature compartilhada (assinatura, heartbeat, payload do conector) entra primeiro na `stable-3_5_0` / `master` e é portada para as stables anteriores.
 
-A linha 3.5 já cria OS, consulta status, recebe callback assinado (persiste ref **e** aplica galley/XML) e faz polling com a tela aberta. 3.3 e 3.4 portam o mesmo contrato HTTP, trocando só o PHP nativo:
+As três linhas existem (`stable-3_3_0`, `stable-3_4_0`, `stable-3_5_0`). A 3.5 cria OS, consulta status, recebe callback assinado (persiste ref **e** aplica galley/XML) e faz polling com a tela aberta. 3.3 e 3.4 portam o mesmo contrato HTTP, trocando só o PHP nativo:
 
 * registro de hooks / menu editorial (`Hook::add` vs `HookRegistry`);
 * publication vs submission (3.3 quase só submission; 3.4+ publication corrente);
