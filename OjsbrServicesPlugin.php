@@ -3,109 +3,84 @@
 /**
  * @file plugins/generic/ojsbrServices/OjsbrServicesPlugin.php
  *
- * Copyright (c) 2026 OJSBR
- *
- * @brief GenericPlugin OJS 3.4 — page `ojsbr`, settings, pin e rotação de pública.
+ * @brief GenericPlugin OJS 3.3 — page `ojsbr`.
  */
 
-namespace APP\plugins\generic\ojsbrServices;
-
-use APP\core\Application;
-use APP\core\Request;
-use APP\plugins\generic\ojsbrServices\classes\OjsbrHttp;
-use APP\plugins\generic\ojsbrServices\classes\OjsbrSignature;
-use APP\plugins\generic\ojsbrServices\pages\OjsbrEditorHandler;
-use APP\plugins\generic\ojsbrServices\pages\OjsbrServiceHandler;
-use APP\template\TemplateManager;
-use PKP\core\JSONMessage;
-use PKP\core\PKPApplication;
-use PKP\linkAction\LinkAction;
-use PKP\linkAction\request\AjaxModal;
-use PKP\linkAction\request\RedirectAction;
-use PKP\notification\NotificationManager;
-use PKP\notification\PKPNotification;
-use PKP\plugins\GenericPlugin;
+import('lib.pkp.classes.plugins.GenericPlugin');
 
 class OjsbrServicesPlugin extends GenericPlugin
 {
-    public const PAGE_NAME = 'ojsbr';
-    public const SETTING_CONNECTOR_URL = 'ojsbrServices.connectorUrl';
-    public const SETTING_TOKEN = 'ojsbrServices.token';
-    public const SETTING_PUBLICA = 'ojsbrServices.trustedPublica';
-    public const SETTING_VERSAO = 'ojsbrServices.chavePublicaVersao';
-    public const SETTING_DT_FIM = 'ojsbrServices.chavePublicaDtFim';
-    public const SETTING_PUBLICA_ANT = 'ojsbrServices.trustedPublicaAnterior';
-    public const SETTING_VERSAO_ANT = 'ojsbrServices.chavePublicaVersaoAnterior';
-    public const SETTING_DT_FIM_ANT = 'ojsbrServices.chavePublicaDtFimAnterior';
-    public const SETTING_OS_REFS = 'ojsbrServices.osPorSubmission';
+    const PAGE_NAME = 'ojsbr';
+    const SETTING_CONNECTOR_URL = 'ojsbrServices.connectorUrl';
+    const SETTING_TOKEN = 'ojsbrServices.token';
+    const SETTING_PUBLICA = 'ojsbrServices.trustedPublica';
+    const SETTING_VERSAO = 'ojsbrServices.chavePublicaVersao';
+    const SETTING_DT_FIM = 'ojsbrServices.chavePublicaDtFim';
+    const SETTING_PUBLICA_ANT = 'ojsbrServices.trustedPublicaAnterior';
+    const SETTING_VERSAO_ANT = 'ojsbrServices.chavePublicaVersaoAnterior';
+    const SETTING_DT_FIM_ANT = 'ojsbrServices.chavePublicaDtFimAnterior';
+    const SETTING_OS_REFS = 'ojsbrServices.osPorSubmission';
 
-    public const SERVICE_OPS = ['heartbeat', 'callback', 'chave'];
-    public const EDITOR_OPS = ['index', 'criar', 'status', 'poll'];
+    public static $SERVICE_OPS = array('heartbeat', 'callback', 'chave');
+    public static $EDITOR_OPS = array('index', 'criar', 'status', 'poll');
 
-    public function register($category, $path, $mainContextId = null): bool
+    public function register($category, $path, $mainContextId = null)
     {
         $success = parent::register($category, $path, $mainContextId);
         if ($success && $this->getEnabled($mainContextId)) {
-            HookRegistry::register('LoadHandler', [$this, 'callbackLoadHandler']);
+            HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
         }
         return $success;
     }
 
-    /**
-     * lazy-load: array vazio = todas as ops quando o plugin está enabled
-     * (LoadHandler precisa estar registrado no pedido da page `ojsbr`).
-     */
-    public function registerOn(): array
+    public function getName()
     {
-        return [];
+        return 'ojsbrServices';
     }
 
-    public function getDisplayName(): string
+    public function getDisplayName()
     {
         return __('plugins.generic.ojsbrServices.displayName');
     }
 
-    public function getDescription(): string
+    public function getDescription()
     {
         return __('plugins.generic.ojsbrServices.description');
     }
 
-    public function getContextSpecificPluginSettingsFile(): string
+    public function getContextSpecificPluginSettingsFile()
     {
         return $this->getPluginPath() . '/settings.xml';
     }
 
-    /**
-     * @param Request $request
-     * @param array $actionArgs
-     */
-    public function getActions($request, $actionArgs): array
+    public function getActions($request, $actionArgs)
     {
         $actions = parent::getActions($request, $actionArgs);
         if (!$this->getEnabled()) {
             return $actions;
         }
-
         $router = $request->getRouter();
+        import('lib.pkp.classes.linkAction.LinkAction');
+        import('lib.pkp.classes.linkAction.request.AjaxModal');
+        import('lib.pkp.classes.linkAction.request.RedirectAction');
         array_unshift($actions, new LinkAction(
             'settings',
             new AjaxModal(
-                $router->url($request, null, null, 'manage', null, [
+                $router->url($request, null, null, 'manage', null, array(
                     'verb' => 'settings',
                     'plugin' => $this->getName(),
                     'category' => 'generic',
-                ]),
+                )),
                 $this->getDisplayName()
             ),
             __('manager.plugins.settings'),
             null
         ));
-
         $context = $request->getContext();
         if ($context) {
             $editorUrl = $request->getDispatcher()->url(
                 $request,
-                Application::ROUTE_PAGE,
+                ROUTE_PAGE,
                 $context->getPath(),
                 self::PAGE_NAME,
                 'index'
@@ -117,116 +92,80 @@ class OjsbrServicesPlugin extends GenericPlugin
                 null
             ));
         }
-
         return $actions;
     }
 
-    /**
-     * @param array $args
-     * @param Request $request
-     */
-    public function manage($args, $request): JSONMessage
+    public function manage($args, $request)
     {
         if ($request->getUserVar('verb') !== 'settings') {
             return parent::manage($args, $request);
         }
-
         $context = $request->getContext();
-        $contextId = $context ? (int) $context->getId() : PKPApplication::CONTEXT_ID_NONE;
-
+        $contextId = $context ? (int) $context->getId() : CONTEXT_ID_NONE;
+        import('lib.pkp.classes.core.JSONMessage');
         if ($request->isPost()) {
             if (!$request->checkCSRF()) {
                 return new JSONMessage(false);
             }
-            $this->updateSetting(
-                $contextId,
-                self::SETTING_CONNECTOR_URL,
-                rtrim(trim((string) $request->getUserVar('connectorUrl')), '/')
-            );
-            $this->updateSetting(
-                $contextId,
-                self::SETTING_TOKEN,
-                trim((string) $request->getUserVar('token'))
-            );
-            $user = $request->getUser();
-            if ($user) {
-                $notificationMgr = new NotificationManager();
-                $notificationMgr->createTrivialNotification(
-                    $user->getId(),
-                    PKPNotification::NOTIFICATION_TYPE_SUCCESS,
-                    ['contents' => __('plugins.generic.ojsbrServices.settings.saved')]
-                );
-            }
+            $this->updateSetting($contextId, self::SETTING_CONNECTOR_URL, rtrim(trim((string) $request->getUserVar('connectorUrl')), '/'));
+            $this->updateSetting($contextId, self::SETTING_TOKEN, trim((string) $request->getUserVar('token')));
             return new JSONMessage(true);
         }
-
         $templateMgr = TemplateManager::getManager($request);
-        $templateMgr->assign([
+        $templateMgr->assign(array(
             'pluginName' => $this->getName(),
             'connectorUrl' => (string) $this->getSetting($contextId, self::SETTING_CONNECTOR_URL),
             'token' => (string) $this->getSetting($contextId, self::SETTING_TOKEN),
-            'formAction' => $request->getRouter()->url($request, null, null, 'manage', null, [
+            'formAction' => $request->getRouter()->url($request, null, null, 'manage', null, array(
                 'verb' => 'settings',
                 'plugin' => $this->getName(),
                 'category' => 'generic',
-            ]),
-        ]);
-
+            )),
+        ));
         return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('settings.tpl')));
     }
 
-    /**
-     * Page `ojsbr` — getName() do plugin NÃO entra na URL.
-     *
-     * @param array $args [page, op, handlerFile, &handler]
-     */
-    public function callbackLoadHandler(string $hookName, array $args): bool
+    public function callbackLoadHandler($hookName, $args)
     {
-        $page = $args[0] ?? '';
-        $op = $args[1] ?? 'index';
+        $page = isset($args[0]) ? $args[0] : '';
+        $op = isset($args[1]) ? $args[1] : 'index';
         if ($page !== self::PAGE_NAME) {
             return false;
         }
-
         $handler = &$args[3];
-        if (in_array($op, self::SERVICE_OPS, true)) {
+        require_once($this->getPluginPath() . '/pages/OjsbrServiceHandler.php');
+        require_once($this->getPluginPath() . '/pages/OjsbrEditorHandler.php');
+        if (in_array($op, self::$SERVICE_OPS, true)) {
             $handler = new OjsbrServiceHandler($this);
             return true;
         }
-
         $handler = new OjsbrEditorHandler($this);
         return true;
     }
 
-    public function getConnectorUrl(int $contextId): string
+    public function getConnectorUrl($contextId)
     {
         return rtrim((string) $this->getSetting($contextId, self::SETTING_CONNECTOR_URL), '/');
     }
 
-    public function getPluginToken(int $contextId): string
+    public function getPluginToken($contextId)
     {
         return (string) $this->getSetting($contextId, self::SETTING_TOKEN);
     }
 
-    public function getPinnedPublicKey(): string
+    public function getPinnedPublicKey()
     {
         $path = $this->getPluginPath() . '/keys/ojsbr.pub';
         return is_readable($path) ? (string) file_get_contents($path) : '';
     }
 
-    /**
-     * Públicas confiáveis: vigente persistida (ou pin) + anterior até dtFim.
-     *
-     * @return string[]
-     */
-    public function getTrustedPublicPems(int $contextId): array
+    public function getTrustedPublicPems($contextId)
     {
         $current = (string) $this->getSetting($contextId, self::SETTING_PUBLICA);
         if ($current === '') {
             $current = $this->getPinnedPublicKey();
         }
-
-        $pems = [$current];
+        $pems = array($current);
         $anterior = (string) $this->getSetting($contextId, self::SETTING_PUBLICA_ANT);
         if ($anterior !== '') {
             $dtFim = (string) $this->getSetting($contextId, self::SETTING_DT_FIM_ANT);
@@ -234,20 +173,16 @@ class OjsbrServicesPlugin extends GenericPlugin
                 $pems[] = $anterior;
             }
         }
-
-        return array_values(array_filter($pems, static fn ($pem) => $pem !== ''));
+        return array_values(array_filter($pems));
     }
 
-    public function getChavePublicaVersao(int $contextId): string
+    public function getChavePublicaVersao($contextId)
     {
         $versao = (string) $this->getSetting($contextId, self::SETTING_VERSAO);
         return $versao !== '' ? $versao : 'pin';
     }
 
-    /**
-     * Persiste a pública distribuída pelo painel (não aparece na UI).
-     */
-    public function persistPublica(int $contextId, string $versao, string $publica, ?string $dtFim): void
+    public function persistPublica($contextId, $versao, $publica, $dtFim)
     {
         $atual = (string) $this->getSetting($contextId, self::SETTING_PUBLICA);
         if ($atual === '') {
@@ -256,80 +191,57 @@ class OjsbrServicesPlugin extends GenericPlugin
         if ($atual !== '') {
             $this->updateSetting($contextId, self::SETTING_PUBLICA_ANT, $atual);
             $this->updateSetting($contextId, self::SETTING_VERSAO_ANT, $this->getChavePublicaVersao($contextId));
-            $this->updateSetting(
-                $contextId,
-                self::SETTING_DT_FIM_ANT,
-                (string) $this->getSetting($contextId, self::SETTING_DT_FIM)
-            );
+            $this->updateSetting($contextId, self::SETTING_DT_FIM_ANT, (string) $this->getSetting($contextId, self::SETTING_DT_FIM));
         }
-
         $this->updateSetting($contextId, self::SETTING_PUBLICA, $publica);
         $this->updateSetting($contextId, self::SETTING_VERSAO, $versao);
         $this->updateSetting($contextId, self::SETTING_DT_FIM, (string) $dtFim);
     }
 
-    /**
-     * @return array<string,array<string,mixed>>
-     */
-    public function getOsRefs(int $contextId): array
+    public function getOsRefs($contextId)
     {
         $refs = $this->getSetting($contextId, self::SETTING_OS_REFS);
-        return is_array($refs) ? $refs : [];
+        return is_array($refs) ? $refs : array();
     }
 
-    /**
-     * @param array<string,mixed> $ref
-     */
-    public function persistOsRef(int $contextId, string $submissionId, array $ref): void
+    public function persistOsRef($contextId, $submissionId, $ref)
     {
         $refs = $this->getOsRefs($contextId);
-        $refs[$submissionId] = array_merge($refs[$submissionId] ?? [], $ref, [
+        $refs[$submissionId] = array_merge(isset($refs[$submissionId]) ? $refs[$submissionId] : array(), $ref, array(
             'submissionId' => $submissionId,
             'dtalt' => date('c'),
-        ]);
+        ));
         $this->updateSetting($contextId, self::SETTING_OS_REFS, $refs);
     }
 
-    /**
-     * Verifica assinatura Ed25519 de um pedido ou resposta STNT.
-     */
-    public function verifySignedBody(int $contextId, ?string $timestamp, ?string $signature, string $body): bool
+    public function verifySignedBody($contextId, $timestamp, $signature, $body)
     {
+        require_once($this->getPluginPath() . '/classes/OjsbrSignature.php');
         return OjsbrSignature::verify($timestamp, $signature, $body, $this->getTrustedPublicPems($contextId));
     }
 
-    /**
-     * @param list<array<string,mixed>>|null $files
-     * @return array{status:int,body:string,headers:array<string,string>,json:?array,signed:bool}
-     */
-    public function callConnector(int $contextId, string $method, string $path, ?array $json = null, ?array $files = null): array
+    public function callConnector($contextId, $method, $path, $json = null, $files = null)
     {
-        $base = $this->getConnectorUrl($contextId);
+        require_once($this->getPluginPath() . '/classes/OjsbrHttp.php');
+        require_once($this->getPluginPath() . '/classes/OjsbrSignature.php');
+        $url = $this->getConnectorUrl($contextId) . $path;
         $token = $this->getPluginToken($contextId);
-        $url = $base . $path;
-
         if ($method === 'GET') {
             $response = OjsbrHttp::get($url, $token);
         } elseif ($files !== null) {
             $response = OjsbrHttp::postFiles($url, $token, $files);
         } else {
-            $response = OjsbrHttp::postJson($url, $json ?? [], $token);
+            $response = OjsbrHttp::postJson($url, $json ? $json : array(), $token);
         }
-
         $sig = OjsbrSignature::fromHeaders($response['headers']);
         $signed = $this->verifySignedBody($contextId, $sig['timestamp'], $sig['signature'], $response['body']);
         $decoded = json_decode($response['body'], true);
-
-        return [
+        return array(
             'status' => $response['status'],
             'body' => $response['body'],
             'headers' => $response['headers'],
             'json' => is_array($decoded) ? $decoded : null,
             'signed' => $signed,
-        ];
+        );
     }
-}
-
-if (!PKP_STRICT_MODE) {
-    class_alias(\APP\plugins\generic\ojsbrServices\OjsbrServicesPlugin::class, 'OjsbrServicesPlugin');
 }

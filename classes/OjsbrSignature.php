@@ -12,10 +12,6 @@
  * Assinatura: base64(ed25519(mensagem))
  */
 
-namespace APP\plugins\generic\ojsbrServices\classes;
-
-use APP\core\Request;
-
 class OjsbrSignature
 {
     public const HEADER_TIMESTAMP = 'X-OJSBR-Timestamp';
@@ -27,7 +23,7 @@ class OjsbrSignature
      *
      * @return array{timestamp:?string,signature:?string}
      */
-    public static function fromRequest(Request $request): array
+    public static function fromRequest($request)
     {
         return [
             'timestamp' => self::firstNonEmpty([
@@ -88,7 +84,7 @@ class OjsbrSignature
                 if (sodium_crypto_sign_verify_detached($signature, $message, $publicKey)) {
                     return true;
                 }
-            } catch (\SodiumException) {
+            } catch (Exception $e) {
                 continue;
             }
         }
@@ -111,7 +107,7 @@ class OjsbrSignature
     public static function extractPublicKey(string $material): ?string
     {
         $material = trim($material);
-        if ($material === '' || str_contains($material, 'PIN-PLACEHOLDER')) {
+        if ($material === '' || strpos($material, 'PIN-PLACEHOLDER') !== false) {
             return null;
         }
 
@@ -158,7 +154,7 @@ class OjsbrSignature
         return null;
     }
 
-    private static function server(Request $request, string $key): ?string
+    private static function server($request, $key)
     {
         $value = $request->getServerVar($key);
         if ($value === null || $value === '') {

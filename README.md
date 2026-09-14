@@ -2,7 +2,7 @@
 
 Plugin genérico PKP (`GenericPlugin`) para o editor criar e acompanhar **ordens de serviço** OJSBR (marcação XML JATS) a partir da revista. Fala **somente** com o conector `node-stnt-ojs`. Não calcula preço, não conhece `clienteId` / `contratoId` e **nunca** assina com a privada Ed25519 da OJSBR (ela não existe neste plugin).
 
-Este repositório segue o padrão PKP: **uma branch por linha de OJS**. Esta árvore é a linha **OJS 3.4** (`HookRegistry`, `Repo`, publication corrente).
+Este repositório segue o padrão PKP: **uma branch por linha de OJS**. Esta árvore é a linha **OJS 3.3** (`HookRegistry`, DAOs, submission + publication quando houver).
 
 Instalar em:
 
@@ -10,16 +10,16 @@ Instalar em:
 plugins/generic/ojsbrServices
 ```
 
-O core do OJS **não** está neste disco. O PHP usa APIs idiomáticas da 3.4 (`HookRegistry`, `Repo::submission()`, publication corrente). Instalar em `plugins/generic/ojsbrServices` numa instalação 3.4. Requer `ext-sodium` e `ext-curl`.
+O core do OJS **não** está neste disco. O PHP usa APIs idiomáticas da 3.3 (`HookRegistry`, `DAORegistry`, `SubmissionDAO`, `ArticleGalleyDAO`). Instalar em `plugins/generic/ojsbrServices` numa instalação 3.3. Requer `ext-sodium` e `ext-curl`.
 
 ## Branches
 
 ```text
 ojsbr-services
-  stable-3_3_0     -- OJS 3.3  (ainda não portado: hooks/DAO)
-  stable-3_4_0     -- OJS 3.4  (ainda não portado: hooks/DAO)
-  stable-3_5_0     -- OJS 3.5  (esta árvore)
-  master           -- cópia da última (3.5); default do clone
+  stable-3_3_0     -- OJS 3.3 (esta árvore)
+  stable-3_4_0     -- OJS 3.4
+  stable-3_5_0     -- OJS 3.5
+  master           -- cópia da última (3.5)
 ```
 
 Release/tag por branch (`1.0.0-3.3`, `1.0.0-3.4`, `1.0.0-3.5`). Feature compartilhada (assinatura, heartbeat, payload do conector) entra primeiro na `stable-3_5_0` / `master` e é portada para as stables anteriores.

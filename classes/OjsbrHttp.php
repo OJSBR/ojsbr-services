@@ -8,8 +8,6 @@
  * @brief Cliente HTTP do plugin → conector (Bearer token). Não assina Ed25519.
  */
 
-namespace APP\plugins\generic\ojsbrServices\classes;
-
 class OjsbrHttp
 {
     public const TIMEOUT_SECONDS = 120;
@@ -113,7 +111,7 @@ class OjsbrHttp
         $headerBlock = substr($raw, 0, $headerSize);
         $responseBody = substr($raw, $headerSize);
         foreach (preg_split("/\r\n|\n|\r/", $headerBlock) ?: [] as $line) {
-            if (!str_contains($line, ':')) {
+            if (strpos($line, ':') === false) {
                 continue;
             }
             [$name, $value] = explode(':', $line, 2);

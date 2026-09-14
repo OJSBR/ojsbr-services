@@ -3,178 +3,136 @@
 /**
  * @file plugins/generic/ojsbrServices/pages/OjsbrServiceHandler.php
  *
- * Copyright (c) 2026 OJSBR
- *
- * @brief Ops públicas heartbeat|callback|chave. Auth = Ed25519, sem login/CSRF.
+ * @brief Ops públicas heartbeat|callback|chave (OJS 3.3).
  */
 
-namespace APP\plugins\generic\ojsbrServices\pages;
-
-use APP\core\Request;
-use APP\handler\Handler;
-use APP\plugins\generic\ojsbrServices\classes\OjsbrGalleyApplier;
-use APP\plugins\generic\ojsbrServices\classes\OjsbrSignature;
-use APP\plugins\generic\ojsbrServices\OjsbrServicesPlugin;
+import('classes.handler.Handler');
 
 class OjsbrServiceHandler extends Handler
 {
-    public function __construct(protected OjsbrServicesPlugin $plugin)
+    /** @var OjsbrServicesPlugin */
+    public $plugin;
+
+    public function __construct($plugin)
     {
         parent::__construct();
+        $this->plugin = $plugin;
     }
 
-    /**
-     * Público: o conector não manda cookie. Sem UserRequired / Role / CSRF.
-     *
-     * @param Request $request
-     * @param array $args
-     * @param array $roleAssignments
-     */
     public function authorize($request, &$args, $roleAssignments)
     {
         return true;
     }
 
-    /**
-     * POST {baseUrl}/index.php/{journalPath}/ojsbr/heartbeat
-     * Pedido assinado. Resposta 200 SEM Ed25519.
-     */
-    public function heartbeat(array $args, Request $request): void
+    public function heartbeat($args, $request)
     {
         $context = $request->getContext();
         if (!$context) {
-            $this->jsonError(400, 'plugins.generic.ojsbrServices.error.badRequest');
+            $this->jsonError(400);
         }
         $contextId = (int) $context->getId();
         $payload = $this->requireSignedJson($request, $contextId);
-        $nonce = (string) ($payload['nonce'] ?? '');
+        $nonce = isset($payload['nonce']) ? (string) $payload['nonce'] : '';
         if ($nonce === '') {
-            $this->jsonError(400, 'plugins.generic.ojsbrServices.error.badRequest');
+            $this->jsonError(400);
         }
-
-        $this->jsonOk([
+        require_once($this->plugin->getPluginPath() . '/classes/OjsbrSignature.php');
+        $this->jsonOk(array(
             'ok' => true,
             'chavePublicaVersao' => $this->plugin->getChavePublicaVersao($contextId),
             'journalPath' => (string) $context->getPath(),
             'hmac' => OjsbrSignature::hmacToken($this->plugin->getPluginToken($contextId), $nonce),
-        ]);
+        ));
     }
 
-    /**
-     * POST …/ojsbr/callback — status + aplica XML/galley na publication corrente.
-     */
-    public function callback(array $args, Request $request): void
+    public function callback($args, $request)
     {
         $context = $request->getContext();
         if (!$context) {
-            $this->jsonError(400, 'plugins.generic.ojsbrServices.error.badRequest');
+            $this->jsonError(400);
         }
         $contextId = (int) $context->getId();
         $payload = $this->requireSignedJson($request, $contextId);
-
-        $submissionId = (string) ($payload['submissionId'] ?? $payload['item']['submissionId'] ?? '');
-        $numero = (string) ($payload['numero'] ?? $payload['os'] ?? '');
-        if ($submissionId === '' || $numero === '') {
-            $this->jsonError(400, 'plugins.generic.ojsbrServices.error.badRequest');
+        $submissionId = isset($payload['submissionId']) ? (string) $payload['submissionId'] : '';
+        if ($submissionId === '' && isset($payload['item']['submissionId'])) {
+            $submissionId = (string) $payload['item']['submissionId'];
         }
-
-        $applied = [];
-        $artefatos = $payload['artefatos'] ?? [];
-        if (is_array($artefatos) && $artefatos) {
+        $numero = isset($payload['numero']) ? (string) $payload['numero'] : (isset($payload['os']) ? (string) $payload['os'] : '');
+        if ($submissionId === '' || $numero === '') {
+            $this->jsonError(400);
+        }
+        $applied = array();
+        if (!empty($payload['artefatos']) && is_array($payload['artefatos'])) {
+            require_once($this->plugin->getPluginPath() . '/classes/OjsbrGalleyApplier.php');
             try {
-                $applied = OjsbrGalleyApplier::apply($contextId, $submissionId, $artefatos);
-            } catch (\Throwable $e) {
+                $applied = OjsbrGalleyApplier::apply($contextId, $submissionId, $payload['artefatos']);
+            } catch (Exception $e) {
                 error_log('OJSBR callback galley: ' . $e->getMessage());
             }
         }
-
-        $this->plugin->persistOsRef($contextId, $submissionId, [
+        $this->plugin->persistOsRef($contextId, $submissionId, array(
             'numero' => $numero,
-            'publicationId' => $payload['publicationId'] ?? ($payload['item']['publicationId'] ?? null),
-            'situacaoProducao' => $payload['situacaoProducao'] ?? null,
-            'situacaoFinanceira' => $payload['situacaoFinanceira'] ?? null,
-            'itemStatus' => $payload['itemStatus'] ?? ($payload['item']['status'] ?? null),
+            'publicationId' => isset($payload['publicationId']) ? $payload['publicationId'] : null,
+            'situacaoProducao' => isset($payload['situacaoProducao']) ? $payload['situacaoProducao'] : null,
+            'situacaoFinanceira' => isset($payload['situacaoFinanceira']) ? $payload['situacaoFinanceira'] : null,
+            'itemStatus' => isset($payload['itemStatus']) ? $payload['itemStatus'] : null,
             'origem' => 'callback',
             'galleysAplicados' => $applied,
-        ]);
-
-        $this->jsonOk([
-            'ok' => true,
-            'submissionId' => $submissionId,
-            'numero' => $numero,
-            'galleys' => $applied,
-        ]);
+        ));
+        $this->jsonOk(array('ok' => true, 'submissionId' => $submissionId, 'numero' => $numero, 'galleys' => $applied));
     }
 
-    /**
-     * POST …/ojsbr/chave — { versao, publica, dtFim }. Persiste pública, devolve { versao, hmac }.
-     */
-    public function chave(array $args, Request $request): void
+    public function chave($args, $request)
     {
         $context = $request->getContext();
         if (!$context) {
-            $this->jsonError(400, 'plugins.generic.ojsbrServices.error.badRequest');
+            $this->jsonError(400);
         }
         $contextId = (int) $context->getId();
         $payload = $this->requireSignedJson($request, $contextId);
-
-        $versao = (string) ($payload['versao'] ?? '');
-        $publica = (string) ($payload['publica'] ?? '');
+        $versao = isset($payload['versao']) ? (string) $payload['versao'] : '';
+        $publica = isset($payload['publica']) ? (string) $payload['publica'] : '';
         $dtFim = isset($payload['dtFim']) ? (string) $payload['dtFim'] : null;
+        require_once($this->plugin->getPluginPath() . '/classes/OjsbrSignature.php');
         if ($versao === '' || $publica === '' || OjsbrSignature::extractPublicKey($publica) === null) {
-            $this->jsonError(400, 'plugins.generic.ojsbrServices.error.badRequest');
+            $this->jsonError(400);
         }
-
         $this->plugin->persistPublica($contextId, $versao, $publica, $dtFim);
-
-        $nonce = (string) ($payload['nonce'] ?? $versao);
-        $this->jsonOk([
+        $nonce = isset($payload['nonce']) ? (string) $payload['nonce'] : $versao;
+        $this->jsonOk(array(
             'versao' => $this->plugin->getChavePublicaVersao($contextId),
             'hmac' => OjsbrSignature::hmacToken($this->plugin->getPluginToken($contextId), $nonce),
-        ]);
+        ));
     }
 
-    /**
-     * @return array<string,mixed>
-     */
-    private function requireSignedJson(Request $request, int $contextId): array
+    private function requireSignedJson($request, $contextId)
     {
         $body = (string) file_get_contents('php://input');
+        require_once($this->plugin->getPluginPath() . '/classes/OjsbrSignature.php');
         $headers = OjsbrSignature::fromRequest($request);
         if (!$this->plugin->verifySignedBody($contextId, $headers['timestamp'], $headers['signature'], $body)) {
-            $this->jsonError(401, 'plugins.generic.ojsbrServices.error.unauthorized');
+            $this->jsonError(401);
         }
         $decoded = json_decode($body, true);
         if (!is_array($decoded)) {
-            $this->jsonError(400, 'plugins.generic.ojsbrServices.error.badRequest');
+            $this->jsonError(400);
         }
         return $decoded;
     }
 
-    /**
-     * @param array<string,mixed> $payload
-     */
-    private function jsonOk(array $payload): void
+    private function jsonOk($payload)
     {
         header('Content-Type: application/json; charset=utf-8');
         http_response_code(200);
-        echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $this->halt();
+        echo json_encode($payload);
+        exit;
     }
 
-    private function jsonError(int $status, string $localeKey): void
+    private function jsonError($status)
     {
         header('Content-Type: application/json; charset=utf-8');
         http_response_code($status);
-        echo json_encode([
-            'ok' => false,
-            'error' => __($localeKey),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $this->halt();
-    }
-
-    private function halt(): never
-    {
+        echo json_encode(array('ok' => false));
         exit;
     }
 }

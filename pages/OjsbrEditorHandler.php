@@ -3,45 +3,31 @@
 /**
  * @file plugins/generic/ojsbrServices/pages/OjsbrEditorHandler.php
  *
- * Copyright (c) 2026 OJSBR
- *
- * @brief UI Manager/Editor: lista submissions, cria OS no conector, sobe arquivos.
+ * @brief UI Manager/Editor OJS 3.3.
  */
 
-namespace APP\plugins\generic\ojsbrServices\pages;
-
-use APP\core\Application;
-use APP\core\Request;
-use APP\facades\Repo;
-use APP\handler\Handler;
-use APP\plugins\generic\ojsbrServices\OjsbrServicesPlugin;
-use APP\publication\Publication;
-use APP\submission\Submission;
-use APP\template\TemplateManager;
-use PKP\security\authorization\ContextAccessPolicy;
-use PKP\security\authorization\CsrfPolicy;
-use PKP\security\authorization\UserRequiredPolicy;
-use PKP\security\Role;
-use PKP\submissionFile\SubmissionFile;
+import('classes.handler.Handler');
 
 class OjsbrEditorHandler extends Handler
 {
-    public function __construct(protected OjsbrServicesPlugin $plugin)
+    /** @var OjsbrServicesPlugin */
+    public $plugin;
+
+    public function __construct($plugin)
     {
         parent::__construct();
+        $this->plugin = $plugin;
         $this->addRoleAssignment(
-            [Role::ROLE_ID_MANAGER, Role::ROLE_ID_SUB_EDITOR],
-            OjsbrServicesPlugin::EDITOR_OPS
+            array(ROLE_ID_MANAGER, ROLE_ID_SUB_EDITOR),
+            OjsbrServicesPlugin::$EDITOR_OPS
         );
     }
 
-    /**
-     * @param Request $request
-     * @param array $args
-     * @param array $roleAssignments
-     */
     public function authorize($request, &$args, $roleAssignments)
     {
+        import('lib.pkp.classes.security.authorization.UserRequiredPolicy');
+        import('lib.pkp.classes.security.authorization.ContextAccessPolicy');
+        import('lib.pkp.classes.security.authorization.CsrfPolicy');
         $this->addPolicy(new UserRequiredPolicy($request));
         $this->addPolicy(new ContextAccessPolicy($request, $roleAssignments));
         if ($request->isPost()) {
@@ -50,511 +36,266 @@ class OjsbrEditorHandler extends Handler
         return parent::authorize($request, $args, $roleAssignments);
     }
 
-    /**
-     * Lista submissions + referência de OS já persistida.
-     */
-    public function index(array $args, Request $request): void
+    public function index($args, $request)
     {
         $this->setupTemplate($request);
         $context = $request->getContext();
         $contextId = (int) $context->getId();
-        $rows = $this->listSubmissionRows($contextId);
-        $osRefs = $this->plugin->getOsRefs($contextId);
-
         $templateMgr = TemplateManager::getManager($request);
-        $templateMgr->assign([
+        $templateMgr->assign(array(
             'pageTitle' => __('plugins.generic.ojsbrServices.editor.title'),
             'pluginPageUrl' => $this->pageUrl($request, 'index'),
             'criarUrl' => $this->pageUrl($request, 'criar'),
             'statusUrl' => $this->pageUrl($request, 'status'),
             'pollUrl' => $this->pageUrl($request, 'poll'),
-            'rows' => $rows,
-            'osRefs' => $osRefs,
+            'rows' => $this->listSubmissionRows($contextId),
+            'osRefs' => $this->plugin->getOsRefs($contextId),
             'hasSettings' => $this->plugin->getConnectorUrl($contextId) !== '' && $this->plugin->getPluginToken($contextId) !== '',
             'flash' => (string) $request->getUserVar('flash'),
             'flashNumero' => (string) $request->getUserVar('numero'),
             'flashFaltante' => (string) $request->getUserVar('faltante'),
-        ]);
+        ));
         $templateMgr->display($this->plugin->getTemplateResource('editor.tpl'));
     }
 
-    /**
-     * POST: monta JSON do create, chama o conector, sobe arquivos em série.
-     */
-    public function criar(array $args, Request $request): void
+    public function criar($args, $request)
     {
         $context = $request->getContext();
         $contextId = (int) $context->getId();
-
+        $ids = $request->getUserVar('submissionIds');
+        if (!is_array($ids) || !$ids) {
+            $this->redirectFlash($request, 'missingItems');
+        }
         if ($this->plugin->getConnectorUrl($contextId) === '' || $this->plugin->getPluginToken($contextId) === '') {
             $this->redirectFlash($request, 'missingSettings');
         }
-
-        $ids = $request->getUserVar('submissionIds');
-        if (!is_array($ids) || $ids === []) {
-            $this->redirectFlash($request, 'missingItems');
-        }
-
-        $built = $this->buildCreatePayload($request, array_map('intval', $ids));
-        $response = $this->plugin->callConnector($contextId, 'POST', '/plugin/v1/ordens', $built['json']);
-        if (empty($response['signed'])) {
-            $this->redirectFlash($request, 'signatureFailed');
-        }
-        if (($response['status'] ?? 0) < 200 || ($response['status'] ?? 0) >= 300 || !is_array($response['json'])) {
-            $this->redirectFlash($request, 'badRequest');
-        }
-
-        $data = $response['json'];
-        $numero = (string) ($data['numero'] ?? '');
-        if ($numero === '') {
-            $this->redirectFlash($request, 'badRequest');
-        }
-
-        foreach ($built['uploads'] as $submissionId => $files) {
-            $path = '/plugin/v1/ordens/' . rawurlencode($numero) . '/itens/' . rawurlencode((string) $submissionId) . '/arquivos';
-            $uploadErro = false;
-            foreach ($files as $file) {
-                $upload = $this->plugin->callConnector($contextId, 'POST', $path, null, [$file]);
-                if (empty($upload['signed']) || ($upload['status'] ?? 0) >= 400) {
-                    $uploadErro = true;
-                    break;
-                }
-            }
-            $this->plugin->persistOsRef($contextId, (string) $submissionId, [
-                'numero' => $numero,
-                'origem' => 'criar',
-                'uploadErro' => $uploadErro,
-                'situacaoProducao' => $data['situacaoProducao'] ?? null,
-                'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
-                'creditoFaltante' => $data['creditoFaltante'] ?? null,
-            ]);
-        }
-
-        foreach ($built['json']['items'] as $item) {
-            $sid = (string) $item['submissionId'];
-            if (!isset($this->plugin->getOsRefs($contextId)[$sid])) {
-                $this->plugin->persistOsRef($contextId, $sid, [
-                    'numero' => $numero,
-                    'origem' => 'criar',
-                    'situacaoProducao' => $data['situacaoProducao'] ?? null,
-                    'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
-                ]);
-            }
-        }
-
-        $this->redirectFlash($request, 'created', [
-            'numero' => $numero,
-            'faltante' => (string) ($data['creditoFaltante'] ?? ''),
-        ]);
-    }
-
-    /**
-     * POST: consulta GET /plugin/v1/ordens/:numero (resposta assinada) e atualiza refs.
-     */
-    public function status(array $args, Request $request): void
-    {
-        $context = $request->getContext();
-        $contextId = (int) $context->getId();
-        $numero = trim((string) $request->getUserVar('numero'));
-        if ($numero === '') {
-            $this->redirectFlash($request, 'missingItems');
-        }
-
-        $response = $this->plugin->callConnector(
-            $contextId,
-            'GET',
-            '/plugin/v1/ordens/' . rawurlencode($numero)
-        );
+        $payload = $this->buildCreatePayload($request, array_map('intval', $ids));
+        $response = $this->plugin->callConnector($contextId, 'POST', '/plugin/v1/ordens', $payload['json']);
         if (empty($response['signed']) || !is_array($response['json'])) {
             $this->redirectFlash($request, 'signatureFailed');
         }
-
         $data = $response['json'];
-        foreach (($data['itens'] ?? []) as $item) {
-            $sid = (string) ($item['submissionId'] ?? '');
-            if ($sid === '') {
+        $numero = isset($data['numero']) ? (string) $data['numero'] : '';
+        foreach ($payload['uploads'] as $sid => $files) {
+            if (!$files) {
                 continue;
             }
-            $this->plugin->persistOsRef($contextId, $sid, [
-                'numero' => $numero,
-                'origem' => 'status',
-                'situacaoProducao' => $data['situacaoProducao'] ?? ($item['situacaoProducao'] ?? null),
-                'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
-                'itemStatus' => $item['status'] ?? ($item['situacaoProducao'] ?? null),
-                'creditoFaltante' => $data['creditoFaltante'] ?? null,
-            ]);
+            $this->plugin->callConnector(
+                $contextId,
+                'POST',
+                '/plugin/v1/ordens/' . rawurlencode($numero) . '/itens/' . rawurlencode((string) $sid) . '/arquivos',
+                null,
+                $files
+            );
         }
-
-        $this->redirectFlash($request, 'created', [
+        foreach ($payload['json']['items'] as $item) {
+            $this->plugin->persistOsRef($contextId, (string) $item['submissionId'], array(
+                'numero' => $numero,
+                'situacaoProducao' => isset($data['situacaoProducao']) ? $data['situacaoProducao'] : null,
+                'situacaoFinanceira' => isset($data['situacaoFinanceira']) ? $data['situacaoFinanceira'] : null,
+                'origem' => 'criar',
+                'creditoFaltante' => isset($data['creditoFaltante']) ? $data['creditoFaltante'] : null,
+            ));
+        }
+        $this->redirectFlash($request, 'created', array(
             'numero' => $numero,
-            'faltante' => (string) ($data['creditoFaltante'] ?? ''),
-        ]);
+            'faltante' => isset($data['creditoFaltante']) ? (string) $data['creditoFaltante'] : '',
+        ));
     }
 
-    /**
-     * GET JSON — polling só com a tela aberta. Sem CSRF.
-     */
-    public function poll(array $args, Request $request): void
+    public function status($args, $request)
+    {
+        $this->refreshOs($request, true);
+    }
+
+    public function poll($args, $request)
+    {
+        $this->refreshOs($request, false);
+    }
+
+    private function refreshOs($request, $redirect)
     {
         $context = $request->getContext();
         $contextId = (int) $context->getId();
         $numero = trim((string) $request->getUserVar('numero'));
         if ($numero === '') {
+            if ($redirect) {
+                $this->redirectFlash($request, 'missingItems');
+            }
             header('Content-Type: application/json; charset=utf-8');
             http_response_code(400);
-            echo json_encode(['ok' => false]);
+            echo json_encode(array('ok' => false));
             exit;
         }
-        $response = $this->plugin->callConnector(
-            $contextId,
-            'GET',
-            '/plugin/v1/ordens/' . rawurlencode($numero)
-        );
+        $response = $this->plugin->callConnector($contextId, 'GET', '/plugin/v1/ordens/' . rawurlencode($numero));
         if (empty($response['signed']) || !is_array($response['json'])) {
+            if ($redirect) {
+                $this->redirectFlash($request, 'signatureFailed');
+            }
             header('Content-Type: application/json; charset=utf-8');
             http_response_code(401);
-            echo json_encode(['ok' => false]);
+            echo json_encode(array('ok' => false));
             exit;
         }
         $data = $response['json'];
-        foreach (($data['itens'] ?? []) as $item) {
-            $sid = (string) ($item['submissionId'] ?? '');
+        foreach (isset($data['itens']) ? $data['itens'] : array() as $item) {
+            $sid = isset($item['submissionId']) ? (string) $item['submissionId'] : '';
             if ($sid === '') {
                 continue;
             }
-            $this->plugin->persistOsRef($contextId, $sid, [
-                'numero' => $data['numero'] ?? $numero,
-                'origem' => 'poll',
-                'situacaoProducao' => $data['situacaoProducao'] ?? null,
-                'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
-                'itemStatus' => $item['status'] ?? null,
-                'creditoFaltante' => $data['creditoFaltante'] ?? null,
-            ]);
+            $this->plugin->persistOsRef($contextId, $sid, array(
+                'numero' => isset($data['numero']) ? $data['numero'] : $numero,
+                'origem' => $redirect ? 'status' : 'poll',
+                'situacaoProducao' => isset($data['situacaoProducao']) ? $data['situacaoProducao'] : null,
+                'situacaoFinanceira' => isset($data['situacaoFinanceira']) ? $data['situacaoFinanceira'] : null,
+                'itemStatus' => isset($item['status']) ? $item['status'] : null,
+                'creditoFaltante' => isset($data['creditoFaltante']) ? $data['creditoFaltante'] : null,
+            ));
+        }
+        if ($redirect) {
+            $this->redirectFlash($request, 'created', array(
+                'numero' => $numero,
+                'faltante' => isset($data['creditoFaltante']) ? (string) $data['creditoFaltante'] : '',
+            ));
         }
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode([
+        echo json_encode(array(
             'ok' => true,
-            'numero' => $data['numero'] ?? $numero,
-            'situacaoProducao' => $data['situacaoProducao'] ?? null,
-            'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
-            'creditoFaltante' => $data['creditoFaltante'] ?? 0,
-            'itens' => $data['itens'] ?? [],
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            'numero' => isset($data['numero']) ? $data['numero'] : $numero,
+            'situacaoProducao' => isset($data['situacaoProducao']) ? $data['situacaoProducao'] : null,
+            'situacaoFinanceira' => isset($data['situacaoFinanceira']) ? $data['situacaoFinanceira'] : null,
+            'creditoFaltante' => isset($data['creditoFaltante']) ? $data['creditoFaltante'] : 0,
+            'itens' => isset($data['itens']) ? $data['itens'] : array(),
+        ));
         exit;
     }
 
-    /**
-     * @return list<array<string,mixed>>
-     */
-    private function listSubmissionRows(int $contextId): array
+    private function listSubmissionRows($contextId)
     {
         $osRefs = $this->plugin->getOsRefs($contextId);
-        $collector = Repo::submission()->getCollector()->filterByContextIds([$contextId]);
-        if (method_exists($collector, 'limit')) {
-            $collector->limit(150);
-        }
-        $rows = [];
-        foreach ($collector->getMany() as $submission) {
-            if (!$submission instanceof Submission) {
-                continue;
-            }
-            $publication = $submission->getCurrentPublication();
+        $submissionDao = DAORegistry::getDAO('SubmissionDAO');
+        $result = $submissionDao->getByContextId($contextId);
+        $rows = array();
+        while ($submission = $result->next()) {
+            $publication = method_exists($submission, 'getCurrentPublication') ? $submission->getCurrentPublication() : null;
             $sid = (string) $submission->getId();
-            $rows[] = [
+            $title = $publication ? $publication->getLocalizedTitle() : $submission->getLocalizedTitle();
+            $doi = '';
+            if ($publication && method_exists($publication, 'getStoredPubId')) {
+                $doi = (string) $publication->getStoredPubId('doi');
+            }
+            $rows[] = array(
                 'submissionId' => $sid,
-                'publicationId' => $publication?->getId(),
-                'title' => $this->publicationTitle($submission, $publication),
-                'doi' => $publication ? $this->publicationDoi($publication) : '',
-                'os' => $osRefs[$sid] ?? null,
-            ];
+                'publicationId' => $publication ? $publication->getId() : null,
+                'title' => $title,
+                'doi' => $doi,
+                'os' => isset($osRefs[$sid]) ? $osRefs[$sid] : null,
+            );
         }
         return $rows;
     }
 
-    /**
-     * @param int[] $submissionIds
-     * @return array{json:array<string,mixed>,uploads:array<int|string,list<array<string,mixed>>>}
-     */
-    private function buildCreatePayload(Request $request, array $submissionIds): array
+    private function buildCreatePayload($request, $submissionIds)
     {
         $context = $request->getContext();
-        $items = [];
-        $uploads = [];
-
+        $submissionDao = DAORegistry::getDAO('SubmissionDAO');
+        $items = array();
+        $uploads = array();
         foreach ($submissionIds as $submissionId) {
-            $submission = Repo::submission()->get($submissionId);
-            if (!$submission instanceof Submission || (int) $submission->getData('contextId') !== (int) $context->getId()) {
+            $submission = $submissionDao->getById($submissionId, $context->getId());
+            if (!$submission) {
                 continue;
             }
-            $publication = $submission->getCurrentPublication();
-            $built = $this->buildItem($submission, $publication);
-            $items[] = $built['item'];
-            $uploads[$submission->getId()] = $built['files'];
+            $publication = method_exists($submission, 'getCurrentPublication') ? $submission->getCurrentPublication() : null;
+            $title = $publication ? $publication->getLocalizedTitle() : $submission->getLocalizedTitle();
+            $doi = '';
+            if ($publication && method_exists($publication, 'getStoredPubId')) {
+                $doi = (string) $publication->getStoredPubId('doi');
+            }
+            $filesMeta = array(array('role' => 'pdf_final', 'fileName' => 'submission.pdf'));
+            $items[] = array(
+                'submissionId' => (string) $submission->getId(),
+                'publicationId' => $publication ? (string) $publication->getId() : null,
+                'title' => $title,
+                'doi' => $doi,
+                'locale' => $submission->getLocale(),
+                'metadata' => array(),
+                'galleys' => array(),
+                'files' => $filesMeta,
+            );
+            $uploads[$submission->getId()] = $this->collectFiles($submission, $publication);
         }
-
-        $locales = method_exists($context, 'getSupportedLocales')
-            ? array_values($context->getSupportedLocales())
-            : [];
-
-        return [
-            'json' => [
+        return array(
+            'json' => array(
                 'service' => 'OS_JATS_XML',
-                'ojsVersion' => '3.4',
+                'ojsVersion' => '3.3',
                 'journalPath' => (string) $context->getPath(),
-                'journal' => [
+                'journal' => array(
                     'title' => (string) $context->getLocalizedName(),
-                    'acronym' => (string) (method_exists($context, 'getLocalizedAcronym') ? $context->getLocalizedAcronym() : ''),
+                    'acronym' => '',
                     'issnPrint' => (string) $context->getData('printIssn'),
                     'issnOnline' => (string) $context->getData('onlineIssn'),
                     'publisher' => (string) $context->getData('publisherInstitution'),
-                    'locales' => $locales,
-                    'metadata' => [],
-                ],
+                    'locales' => array_values($context->getSupportedLocales()),
+                    'metadata' => array(),
+                ),
                 'items' => $items,
-            ],
+            ),
             'uploads' => $uploads,
-        ];
+        );
     }
 
-    /**
-     * @return array{item:array<string,mixed>,files:list<array<string,mixed>>}
-     */
-    private function buildItem(Submission $submission, ?Publication $publication): array
+    private function collectFiles($submission, $publication)
     {
-        $galleysMeta = [];
-        $filesMeta = [];
-        $uploads = [];
-        $seenNames = [];
-
-        foreach ($this->publicationGalleys($publication) as $galley) {
-            $galleyId = (string) $galley->getId();
-            $locale = (string) ($galley->getLocale() ?: $submission->getData('locale') ?: '');
-            $file = $this->galleyFile($galley);
-            $fileName = $file ? $this->fileName($file) : ($galley->getLabel() ?: 'galley');
-            $galleysMeta[] = [
-                'id' => $galleyId,
-                'label' => (string) $galley->getLabel(),
-                'locale' => $locale,
-                'genre' => 'galley',
-                'fileName' => $fileName,
-            ];
-            $filesMeta[] = [
-                'role' => 'galley',
-                'galleyId' => $galleyId,
-                'fileName' => $fileName,
-                'locale' => $locale,
-            ];
-            if ($file && $this->isPdf($fileName)) {
-                $filesMeta[] = [
-                    'role' => 'pdf_final',
-                    'fileName' => $fileName,
-                    'locale' => $locale,
-                ];
-            }
-            $bytes = $file ? $this->readFileBytes($file) : null;
-            if ($bytes !== null) {
-                $uploads[] = [
-                    'role' => 'galley',
-                    'galleyId' => $galleyId,
-                    'fileName' => $fileName,
-                    'locale' => $locale,
-                    'contents' => $bytes,
-                ];
-                if ($this->isPdf($fileName)) {
-                    $uploads[] = [
-                        'role' => 'pdf_final',
-                        'fileName' => $fileName,
-                        'locale' => $locale,
-                        'contents' => $bytes,
-                    ];
+        $uploads = array();
+        $galleyDao = DAORegistry::getDAO('ArticleGalleyDAO');
+        $publicationId = $publication ? $publication->getId() : null;
+        if ($publicationId && $galleyDao) {
+            $galleys = $galleyDao->getByPublicationId($publicationId);
+            while ($galleys && ($galley = $galleys->next())) {
+                $file = method_exists($galley, 'getFile') ? $galley->getFile() : null;
+                if (!$file) {
+                    continue;
                 }
-                $seenNames[$fileName] = true;
-            }
-        }
-
-        foreach ($this->submissionFiles($submission) as $file) {
-            $fileName = $this->fileName($file);
-            $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-            if (!in_array($ext, ['doc', 'docx', 'pdf'], true)) {
-                continue;
-            }
-            if (isset($seenNames[$fileName]) && $ext === 'pdf') {
-                continue;
-            }
-            $role = $ext === 'pdf' ? 'pdf_final' : 'manuscrito';
-            $already = array_filter($filesMeta, static fn ($f) => ($f['role'] ?? '') === $role);
-            if ($already && $role === 'pdf_final') {
-                continue;
-            }
-            $filesMeta[] = [
-                'role' => $role,
-                'fileName' => $fileName,
-            ];
-            $bytes = $this->readFileBytes($file);
-            if ($bytes !== null) {
-                $uploads[] = [
-                    'role' => $role,
-                    'fileName' => $fileName,
+                $path = method_exists($file, 'getData') ? $file->getData('path') : null;
+                $name = method_exists($file, 'getOriginalFileName') ? $file->getOriginalFileName() : 'galley';
+                $bytes = $this->readPath($path);
+                if ($bytes === null) {
+                    continue;
+                }
+                $uploads[] = array(
+                    'role' => 'galley',
+                    'galleyId' => (string) $galley->getId(),
+                    'fileName' => $name,
                     'contents' => $bytes,
-                ];
+                );
+                if (preg_match('/\.pdf$/i', $name)) {
+                    $uploads[] = array('role' => 'pdf_final', 'fileName' => $name, 'contents' => $bytes);
+                }
             }
         }
-
-        return [
-            'item' => [
-                'submissionId' => (string) $submission->getId(),
-                'publicationId' => $publication ? (string) $publication->getId() : null,
-                'title' => $this->publicationTitle($submission, $publication),
-                'doi' => $publication ? $this->publicationDoi($publication) : '',
-                'locale' => (string) ($publication?->getData('locale') ?: $submission->getData('locale') ?: ''),
-                'metadata' => [],
-                'galleys' => $galleysMeta,
-                'files' => $filesMeta,
-            ],
-            'files' => $uploads,
-        ];
+        return $uploads;
     }
 
-    /**
-     * @return list<object>
-     */
-    private function publicationGalleys(?Publication $publication): array
+    private function readPath($path)
     {
-        if (!$publication) {
-            return [];
-        }
-        $galleys = $publication->getData('galleys');
-        if (is_array($galleys) || $galleys instanceof \Traversable) {
-            return array_values(is_array($galleys) ? $galleys : iterator_to_array($galleys));
-        }
-        if (method_exists(Repo::class, 'galley')) {
-            try {
-                return array_values(iterator_to_array(
-                    Repo::galley()->getCollector()
-                        ->filterByPublicationIds([$publication->getId()])
-                        ->getMany()
-                ));
-            } catch (\Throwable) {
-                return [];
-            }
-        }
-        return [];
-    }
-
-    private function galleyFile(object $galley): ?SubmissionFile
-    {
-        if (method_exists($galley, 'getFile')) {
-            $file = $galley->getFile();
-            if ($file instanceof SubmissionFile) {
-                return $file;
-            }
-        }
-        $fileId = method_exists($galley, 'getData') ? $galley->getData('submissionFileId') : null;
-        if ($fileId) {
-            $file = Repo::submissionFile()->get((int) $fileId);
-            return $file instanceof SubmissionFile ? $file : null;
-        }
-        return null;
-    }
-
-    /**
-     * @return list<SubmissionFile>
-     */
-    private function submissionFiles(Submission $submission): array
-    {
-        $stages = [
-            SubmissionFile::SUBMISSION_FILE_SUBMISSION,
-            SubmissionFile::SUBMISSION_FILE_FINAL,
-            SubmissionFile::SUBMISSION_FILE_PRODUCTION_READY,
-        ];
-        try {
-            return array_values(iterator_to_array(
-                Repo::submissionFile()->getCollector()
-                    ->filterBySubmissionIds([$submission->getId()])
-                    ->filterByFileStages($stages)
-                    ->getMany()
-            ));
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    private function fileName(SubmissionFile $file): string
-    {
-        $name = $file->getData('name');
-        if (is_array($name)) {
-            $name = $file->getLocalizedData('name') ?: reset($name);
-        }
-        return (string) ($name ?: ('file-' . $file->getId()));
-    }
-
-    private function isPdf(string $fileName): bool
-    {
-        return strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) === 'pdf';
-    }
-
-    private function readFileBytes(SubmissionFile $file): ?string
-    {
-        try {
-            $path = (string) $file->getData('path');
-            if ($path === '') {
-                return null;
-            }
-            $fileService = app()->get('file');
-            if ($fileService && isset($fileService->fs) && method_exists($fileService->fs, 'read')) {
-                $bytes = $fileService->fs->read($path);
-                return is_string($bytes) ? $bytes : null;
-            }
-        } catch (\Throwable) {
+        if (!$path || !is_readable($path)) {
             return null;
         }
-        return null;
+        $bytes = file_get_contents($path);
+        return $bytes === false ? null : $bytes;
     }
 
-    private function publicationTitle(Submission $submission, ?Publication $publication): string
+    private function pageUrl($request, $op)
     {
-        if ($publication && method_exists($publication, 'getLocalizedFullTitle')) {
-            $title = (string) $publication->getLocalizedFullTitle();
-            if ($title !== '') {
-                return $title;
-            }
-        }
-        if ($publication && method_exists($publication, 'getLocalizedTitle')) {
-            return (string) $publication->getLocalizedTitle();
-        }
-        return (string) $submission->getLocalizedTitle();
+        return $request->getDispatcher()->url($request, ROUTE_PAGE, $request->getContext()->getPath(), 'ojsbr', $op);
     }
 
-    private function publicationDoi(Publication $publication): string
+    private function redirectFlash($request, $flash, $params = array())
     {
-        if (method_exists($publication, 'getDoi')) {
-            $doi = $publication->getDoi();
-            if ($doi) {
-                return (string) $doi;
-            }
-        }
-        return (string) ($publication->getStoredPubId('doi') ?: '');
-    }
-
-    /**
-     * @param array<string,string> $params
-     */
-    private function redirectFlash(Request $request, string $flash, array $params = []): never
-    {
-        $url = $this->pageUrl($request, 'index') . '?' . http_build_query(array_merge(['flash' => $flash], $params));
-        $request->redirectUrl($url);
+        $url = $this->pageUrl($request, 'index');
+        $qs = array_merge(array('flash' => $flash), $params);
+        $request->redirectUrl($url . (strpos($url, '?') === false ? '?' : '&') . http_build_query($qs));
         exit;
-    }
-
-    private function pageUrl(Request $request, string $op): string
-    {
-        $context = $request->getContext();
-        return $request->getDispatcher()->url(
-            $request,
-            Application::ROUTE_PAGE,
-            $context?->getPath(),
-            OjsbrServicesPlugin::PAGE_NAME,
-            $op
-        );
     }
 }

@@ -3,9 +3,7 @@
 /**
  * @file plugins/generic/ojsbrServices/index.php
  *
- * Copyright (c) 2026 OJSBR
- *
- * @brief Wrapper for initializing the OJSBR Services plugin (OJS 3.4).
+ * @brief Wrapper OJS 3.3.
  */
-
-return new \APP\plugins\generic\ojsbrServices\OjsbrServicesPlugin();
+require_once('OjsbrServicesPlugin.php');
+return new OjsbrServicesPlugin();
