@@ -41,7 +41,7 @@ class OjsbrServicesPlugin extends GenericPlugin
     public const SETTING_OS_REFS = 'ojsbrServices.osPorSubmission';
 
     public const SERVICE_OPS = ['heartbeat', 'callback', 'chave'];
-    public const EDITOR_OPS = ['index', 'criar', 'status'];
+    public const EDITOR_OPS = ['index', 'criar', 'status', 'poll'];
 
     public function register($category, $path, $mainContextId = null): bool
     {

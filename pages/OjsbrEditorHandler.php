@@ -67,6 +67,7 @@ class OjsbrEditorHandler extends Handler
             'pluginPageUrl' => $this->pageUrl($request, 'index'),
             'criarUrl' => $this->pageUrl($request, 'criar'),
             'statusUrl' => $this->pageUrl($request, 'status'),
+            'pollUrl' => $this->pageUrl($request, 'poll'),
             'rows' => $rows,
             'osRefs' => $osRefs,
             'hasSettings' => $this->plugin->getConnectorUrl($contextId) !== '' && $this->plugin->getPluginToken($contextId) !== '',
@@ -188,6 +189,58 @@ class OjsbrEditorHandler extends Handler
             'numero' => $numero,
             'faltante' => (string) ($data['creditoFaltante'] ?? ''),
         ]);
+    }
+
+    /**
+     * GET JSON — polling só com a tela aberta. Sem CSRF.
+     */
+    public function poll(array $args, Request $request): void
+    {
+        $context = $request->getContext();
+        $contextId = (int) $context->getId();
+        $numero = trim((string) $request->getUserVar('numero'));
+        if ($numero === '') {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(400);
+            echo json_encode(['ok' => false]);
+            exit;
+        }
+        $response = $this->plugin->callConnector(
+            $contextId,
+            'GET',
+            '/plugin/v1/ordens/' . rawurlencode($numero)
+        );
+        if (empty($response['signed']) || !is_array($response['json'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(401);
+            echo json_encode(['ok' => false]);
+            exit;
+        }
+        $data = $response['json'];
+        foreach (($data['itens'] ?? []) as $item) {
+            $sid = (string) ($item['submissionId'] ?? '');
+            if ($sid === '') {
+                continue;
+            }
+            $this->plugin->persistOsRef($contextId, $sid, [
+                'numero' => $data['numero'] ?? $numero,
+                'origem' => 'poll',
+                'situacaoProducao' => $data['situacaoProducao'] ?? null,
+                'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
+                'itemStatus' => $item['status'] ?? null,
+                'creditoFaltante' => $data['creditoFaltante'] ?? null,
+            ]);
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'ok' => true,
+            'numero' => $data['numero'] ?? $numero,
+            'situacaoProducao' => $data['situacaoProducao'] ?? null,
+            'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
+            'creditoFaltante' => $data['creditoFaltante'] ?? 0,
+            'itens' => $data['itens'] ?? [],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 
     /**

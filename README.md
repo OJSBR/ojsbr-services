@@ -2,7 +2,7 @@
 
 Plugin genérico PKP (`GenericPlugin`) para o editor criar e acompanhar **ordens de serviço** OJSBR (marcação XML JATS) a partir da revista. Fala **somente** com o conector `node-stnt-ojs`. Não calcula preço, não conhece `clienteId` / `contratoId` e **nunca** assina com a privada Ed25519 da OJSBR (ela não existe neste plugin).
 
-Este repositório segue o padrão PKP: **uma branch por linha de OJS**. A implementação atual é **OJS 3.5**.
+Este repositório segue o padrão PKP: **uma branch por linha de OJS**. A linha **3.5** aplica XML/galley no callback e faz polling na tela do editor.
 
 Instalar em:
 
@@ -24,12 +24,12 @@ ojsbr-services
 
 Release/tag por branch (`1.0.0-3.3`, `1.0.0-3.4`, `1.0.0-3.5`). Feature compartilhada (assinatura, heartbeat, payload do conector) entra primeiro na `stable-3_5_0` / `master` e é portada para as stables anteriores.
 
-Neste momento **só a linha 3.5 está implementada**. 3.3 e 3.4 devem portar:
+A linha 3.5 já cria OS, consulta status, recebe callback assinado (persiste ref **e** aplica galley/XML) e faz polling com a tela aberta. 3.3 e 3.4 portam o mesmo contrato HTTP, trocando só o PHP nativo:
 
 * registro de hooks / menu editorial (`Hook::add` vs `HookRegistry`);
 * publication vs submission (3.3 quase só submission; 3.4+ publication corrente);
 * listagem de galleys e arquivos (API/DAO daquela linha);
-* upload de galley de resultado no callback (quando for além da referência);
+* upload de galley de resultado no callback;
 * `authorize()` / roles (Manager / Editor).
 
 A chave pública pinada fica no **mesmo path** em todas as branches: `keys/ojsbr.pub`.
@@ -112,7 +112,7 @@ Pedido assinado `{ "ts", "nonce" }`. Resposta **200 sem Ed25519**:
 
 ### Callback
 
-Pedido assinado com status/XML. Nesta versão **só persiste a referência da OS** no setting interno por `submissionId` (não aplica galley/XML no OJS ainda).
+Pedido assinado com status, `artefatos[]` (`contentBase64`) e metadados. Persiste a referência da OS e tenta aplicar XML/galley na publication corrente (`OjsbrGalleyApplier`).
 
 ### Chave
 

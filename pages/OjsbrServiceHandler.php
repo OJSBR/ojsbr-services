@@ -12,6 +12,7 @@ namespace APP\plugins\generic\ojsbrServices\pages;
 
 use APP\core\Request;
 use APP\handler\Handler;
+use APP\plugins\generic\ojsbrServices\classes\OjsbrGalleyApplier;
 use APP\plugins\generic\ojsbrServices\classes\OjsbrSignature;
 use APP\plugins\generic\ojsbrServices\OjsbrServicesPlugin;
 
@@ -60,7 +61,7 @@ class OjsbrServiceHandler extends Handler
     }
 
     /**
-     * POST …/ojsbr/callback — status/XML. Só persiste referência da OS por submission.
+     * POST …/ojsbr/callback — status + aplica XML/galley na publication corrente.
      */
     public function callback(array $args, Request $request): void
     {
@@ -77,6 +78,16 @@ class OjsbrServiceHandler extends Handler
             $this->jsonError(400, 'plugins.generic.ojsbrServices.error.badRequest');
         }
 
+        $applied = [];
+        $artefatos = $payload['artefatos'] ?? [];
+        if (is_array($artefatos) && $artefatos) {
+            try {
+                $applied = OjsbrGalleyApplier::apply($contextId, $submissionId, $artefatos);
+            } catch (\Throwable $e) {
+                error_log('OJSBR callback galley: ' . $e->getMessage());
+            }
+        }
+
         $this->plugin->persistOsRef($contextId, $submissionId, [
             'numero' => $numero,
             'publicationId' => $payload['publicationId'] ?? ($payload['item']['publicationId'] ?? null),
@@ -84,9 +95,15 @@ class OjsbrServiceHandler extends Handler
             'situacaoFinanceira' => $payload['situacaoFinanceira'] ?? null,
             'itemStatus' => $payload['itemStatus'] ?? ($payload['item']['status'] ?? null),
             'origem' => 'callback',
+            'galleysAplicados' => $applied,
         ]);
 
-        $this->jsonOk(['ok' => true, 'submissionId' => $submissionId, 'numero' => $numero]);
+        $this->jsonOk([
+            'ok' => true,
+            'submissionId' => $submissionId,
+            'numero' => $numero,
+            'galleys' => $applied,
+        ]);
     }
 
     /**
