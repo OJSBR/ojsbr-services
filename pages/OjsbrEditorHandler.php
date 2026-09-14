@@ -68,6 +68,7 @@ class OjsbrEditorHandler extends Handler
             'criarUrl' => $this->pageUrl($request, 'criar'),
             'statusUrl' => $this->pageUrl($request, 'status'),
             'pollUrl' => $this->pageUrl($request, 'poll'),
+            'osUrl' => $this->pageUrl($request, 'os'),
             'rows' => $rows,
             'osRefs' => $osRefs,
             'hasSettings' => $this->plugin->getConnectorUrl($contextId) !== '' && $this->plugin->getPluginToken($contextId) !== '',
@@ -120,13 +121,20 @@ class OjsbrEditorHandler extends Handler
                     break;
                 }
             }
+            $fresh = $this->plugin->callConnector(
+                $contextId,
+                'GET',
+                '/plugin/v1/ordens/' . rawurlencode($numero)
+            );
+            $freshData = (!empty($fresh['signed']) && is_array($fresh['json'])) ? $fresh['json'] : $data;
+            $this->persistOsFromPayload($contextId, $freshData, $numero, 'criar');
             $this->plugin->persistOsRef($contextId, (string) $submissionId, [
                 'numero' => $numero,
                 'origem' => 'criar',
                 'uploadErro' => $uploadErro,
-                'situacaoProducao' => $data['situacaoProducao'] ?? null,
-                'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
-                'creditoFaltante' => $data['creditoFaltante'] ?? null,
+                'situacaoProducao' => $freshData['situacaoProducao'] ?? null,
+                'situacaoFinanceira' => $freshData['situacaoFinanceira'] ?? null,
+                'creditoFaltante' => $freshData['creditoFaltante'] ?? null,
             ]);
         }
 
@@ -142,10 +150,13 @@ class OjsbrEditorHandler extends Handler
             }
         }
 
-        $this->redirectFlash($request, 'created', [
+        $url = $this->pageUrl($request, 'os') . '?' . http_build_query([
             'numero' => $numero,
+            'flash' => 'created',
             'faltante' => (string) ($data['creditoFaltante'] ?? ''),
         ]);
+        $request->redirectUrl($url);
+        exit;
     }
 
     /**
@@ -170,25 +181,52 @@ class OjsbrEditorHandler extends Handler
         }
 
         $data = $response['json'];
-        foreach (($data['itens'] ?? []) as $item) {
-            $sid = (string) ($item['submissionId'] ?? '');
-            if ($sid === '') {
-                continue;
-            }
-            $this->plugin->persistOsRef($contextId, $sid, [
-                'numero' => $numero,
-                'origem' => 'status',
-                'situacaoProducao' => $data['situacaoProducao'] ?? ($item['situacaoProducao'] ?? null),
-                'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
-                'itemStatus' => $item['status'] ?? ($item['situacaoProducao'] ?? null),
-                'creditoFaltante' => $data['creditoFaltante'] ?? null,
-            ]);
-        }
-
-        $this->redirectFlash($request, 'created', [
-            'numero' => $numero,
+        $this->persistOsFromPayload($contextId, $data, $numero, 'status');
+        $url = $this->pageUrl($request, 'os') . '?' . http_build_query([
+            'numero' => $data['numero'] ?? $numero,
+            'flash' => 'created',
             'faltante' => (string) ($data['creditoFaltante'] ?? ''),
         ]);
+        $request->redirectUrl($url);
+        exit;
+    }
+
+    /**
+     * Tela da OS — polling só aqui (não na lista).
+     */
+    public function os(array $args, Request $request): void
+    {
+        $this->setupTemplate($request);
+        $context = $request->getContext();
+        $contextId = (int) $context->getId();
+        $numero = trim((string) $request->getUserVar('numero'));
+        if ($numero === '') {
+            $this->redirectFlash($request, 'missingItems');
+        }
+
+        $response = $this->plugin->callConnector(
+            $contextId,
+            'GET',
+            '/plugin/v1/ordens/' . rawurlencode($numero)
+        );
+        if (empty($response['signed']) || !is_array($response['json'])) {
+            $this->redirectFlash($request, 'signatureFailed');
+        }
+
+        $data = $response['json'];
+        $this->persistOsFromPayload($contextId, $data, $numero, 'os');
+
+        $templateMgr = TemplateManager::getManager($request);
+        $templateMgr->assign([
+            'pageTitle' => __('plugins.generic.ojsbrServices.editor.osTitle', ['numero' => $data['numero'] ?? $numero]),
+            'pluginPageUrl' => $this->pageUrl($request, 'index'),
+            'pollUrl' => $this->pageUrl($request, 'poll'),
+            'os' => $data,
+            'numero' => $data['numero'] ?? $numero,
+            'flash' => (string) $request->getUserVar('flash'),
+            'flashFaltante' => (string) $request->getUserVar('faltante'),
+        ]);
+        $templateMgr->display($this->plugin->getTemplateResource('os.tpl'));
     }
 
     /**
@@ -217,20 +255,7 @@ class OjsbrEditorHandler extends Handler
             exit;
         }
         $data = $response['json'];
-        foreach (($data['itens'] ?? []) as $item) {
-            $sid = (string) ($item['submissionId'] ?? '');
-            if ($sid === '') {
-                continue;
-            }
-            $this->plugin->persistOsRef($contextId, $sid, [
-                'numero' => $data['numero'] ?? $numero,
-                'origem' => 'poll',
-                'situacaoProducao' => $data['situacaoProducao'] ?? null,
-                'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
-                'itemStatus' => $item['status'] ?? null,
-                'creditoFaltante' => $data['creditoFaltante'] ?? null,
-            ]);
-        }
+        $this->persistOsFromPayload($contextId, $data, $numero, 'poll');
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
             'ok' => true,
@@ -241,6 +266,27 @@ class OjsbrEditorHandler extends Handler
             'itens' => $data['itens'] ?? [],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    /**
+     * @param array<string,mixed> $data
+     */
+    private function persistOsFromPayload(int $contextId, array $data, string $numero, string $origem): void
+    {
+        foreach (($data['itens'] ?? []) as $item) {
+            $sid = (string) ($item['submissionId'] ?? '');
+            if ($sid === '') {
+                continue;
+            }
+            $this->plugin->persistOsRef($contextId, $sid, [
+                'numero' => $data['numero'] ?? $numero,
+                'origem' => $origem,
+                'situacaoProducao' => $data['situacaoProducao'] ?? null,
+                'situacaoFinanceira' => $data['situacaoFinanceira'] ?? null,
+                'itemStatus' => $item['status'] ?? ($item['situacaoProducao'] ?? null),
+                'creditoFaltante' => $data['creditoFaltante'] ?? null,
+            ]);
+        }
     }
 
     /**

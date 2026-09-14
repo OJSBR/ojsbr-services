@@ -71,6 +71,15 @@ msgstr "Status"
 msgid "plugins.generic.ojsbrServices.editor.refresh"
 msgstr "Refresh status"
 
+msgid "plugins.generic.ojsbrServices.editor.osTitle"
+msgstr "Service order {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.backToList"
+msgstr "Back to submissions"
+
+msgid "plugins.generic.ojsbrServices.editor.pendingFiles"
+msgstr "Some files are still pending in GED storage; OJSBR will regularize this."
+
 msgid "plugins.generic.ojsbrServices.editor.signatureFailed"
 msgstr "Connector response signature was invalid. The order was not accepted."
 
