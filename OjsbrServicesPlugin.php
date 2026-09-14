@@ -5,7 +5,7 @@
  *
  * Copyright (c) 2026 OJSBR
  *
- * @brief GenericPlugin OJS 3.5 — page `ojsbr`, settings, pin e rotação de pública.
+ * @brief GenericPlugin OJS 3.4 — page `ojsbr`, settings, pin e rotação de pública.
  */
 
 namespace APP\plugins\generic\ojsbrServices;
@@ -25,7 +25,6 @@ use PKP\linkAction\request\RedirectAction;
 use PKP\notification\NotificationManager;
 use PKP\notification\PKPNotification;
 use PKP\plugins\GenericPlugin;
-use PKP\plugins\Hook;
 
 class OjsbrServicesPlugin extends GenericPlugin
 {
@@ -47,7 +46,7 @@ class OjsbrServicesPlugin extends GenericPlugin
     {
         $success = parent::register($category, $path, $mainContextId);
         if ($success && $this->getEnabled($mainContextId)) {
-            Hook::add('LoadHandler', $this->callbackLoadHandler(...));
+            HookRegistry::register('LoadHandler', [$this, 'callbackLoadHandler']);
         }
         return $success;
     }

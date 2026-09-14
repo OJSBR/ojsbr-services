@@ -299,7 +299,7 @@ class OjsbrEditorHandler extends Handler
         return [
             'json' => [
                 'service' => 'OS_JATS_XML',
-                'ojsVersion' => '3.5',
+                'ojsVersion' => '3.4',
                 'journalPath' => (string) $context->getPath(),
                 'journal' => [
                     'title' => (string) $context->getLocalizedName(),

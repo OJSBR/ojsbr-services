@@ -5,7 +5,7 @@
  *
  * Copyright (c) 2026 OJSBR
  *
- * @brief Aplica XML/galley de resultado na publication corrente (OJS 3.5).
+ * @brief Aplica XML/galley de resultado na publication corrente (OJS 3.4).
  */
 
 namespace APP\plugins\generic\ojsbrServices\classes;

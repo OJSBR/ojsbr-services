@@ -2,7 +2,7 @@
 
 Plugin genérico PKP (`GenericPlugin`) para o editor criar e acompanhar **ordens de serviço** OJSBR (marcação XML JATS) a partir da revista. Fala **somente** com o conector `node-stnt-ojs`. Não calcula preço, não conhece `clienteId` / `contratoId` e **nunca** assina com a privada Ed25519 da OJSBR (ela não existe neste plugin).
 
-Este repositório segue o padrão PKP: **uma branch por linha de OJS**. A linha **3.5** aplica XML/galley no callback e faz polling na tela do editor.
+Este repositório segue o padrão PKP: **uma branch por linha de OJS**. Esta árvore é a linha **OJS 3.4** (`HookRegistry`, `Repo`, publication corrente).
 
 Instalar em:
 
@@ -10,7 +10,7 @@ Instalar em:
 plugins/generic/ojsbrServices
 ```
 
-O core do OJS **não** está neste disco. O PHP usa APIs idiomáticas da 3.5 (`PKPApplication`, `PluginRegistry`, `Hook`, `Handler`, `Role`, `Repo::submission()`, `Publication`). Depois de copiar para uma instalação 3.5, registrar com `lib/pkp/tools/installPluginVersion.php` (ou pela galeria) e habilitar no contexto da revista. Requer `ext-sodium` e `ext-curl`.
+O core do OJS **não** está neste disco. O PHP usa APIs idiomáticas da 3.4 (`HookRegistry`, `Repo::submission()`, publication corrente). Instalar em `plugins/generic/ojsbrServices` numa instalação 3.4. Requer `ext-sodium` e `ext-curl`.
 
 ## Branches
 
