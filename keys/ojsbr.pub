@@ -1,6 +1,5 @@
 # OJSBR Ed25519 public key (PIN).
-# Placeholder — substituir no deploy do stnt-ojs pela PEM real.
-# versao: pin
+# versao: v20260914-pin — gerada no deploy do stnt-ojs.
 -----BEGIN PUBLIC KEY-----
-PIN-PLACEHOLDER
+MCowBQYDK2VwAyEARkVCD+yluBr3tU373F11AgddwerocqK0r73If6ErruA=
 -----END PUBLIC KEY-----
