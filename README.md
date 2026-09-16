@@ -1,58 +1,122 @@
-# OJSBR Services
+# OJSBR Services — OJS plugin
 
-Plugin genérico PKP (`GenericPlugin`) para o editor criar e acompanhar **ordens de serviço** OJSBR (marcação XML JATS) a partir da revista. Fala **somente** com o conector `node-stnt-ojs`. Não calcula preço, não conhece `clienteId` / `contratoId` e **nunca** assina com a privada Ed25519 da OJSBR (ela não existe neste plugin).
+[![OJS](https://img.shields.io/badge/OJS-3.5-brightgreen)](https://pkp.sfu.ca/ojs/)
+[![Version](https://img.shields.io/badge/version-1.0.1.0-blue)](version.xml)
+[![License](https://img.shields.io/badge/license-GPL--3.0-lightgrey)](LICENSE)
 
-Este repositório segue o padrão PKP: **uma branch por linha de OJS**. A linha **3.5** aplica XML/galley no callback e faz polling na tela do editor.
+**⬇️ Install package:** [OJS 3.5](https://github.com/OJSBR/ojsbrServices/releases/download/1.0.1.0/ojsbrServices-1.0.1.0.tar.gz) — or browse all [Releases](../../releases).
 
-Instalar em:
+A generic plugin for **Open Journal Systems (OJS)** that lets an editor open and follow **OJSBR
+service orders** (JATS XML markup) from inside the journal. It talks only to the OJSBR connector,
+it does not calculate any price, and it **never signs anything**: the OJSBR private key does not
+exist in this plugin.
+
+> **Developed and maintained by [OJSBR](https://ojsbr.com).** See the
+> [Credits & authorship](#credits--authorship) section below.
+
+## Compatibility & branches
+
+| OJS version | Branch | Plugin release |
+|-------------|--------|----------------|
+| OJS 3.5.x   | [`stable-3_5_0`](../../tree/stable-3_5_0) *(default)* | 1.0.1.0 |
+| OJS 3.4.x   | [`stable-3_4_0`](../../tree/stable-3_4_0) | not ported yet |
+| OJS 3.3.x   | [`stable-3_3_0`](../../tree/stable-3_3_0) | not ported yet |
+
+Install into `plugins/generic/ojsbrServices`. Requires **ext-sodium** (signature verification).
+
+## What it does
+
+- Adds an **OJSBR Services** page to the editorial interface (`{baseUrl}/index.php/{journalPath}/ojsbr`),
+  where a manager or an editor picks submissions and sends them as one markup order.
+- Uploads the files of each submission to the connector, one submission at a time.
+- Receives the signed callback, records the order against the submission and puts the XML and the
+  galley that came back onto the current publication.
+- Polls the status while the order's screen is open — never from the list.
+
+## Trust
+
+Every request from the connector, and every answer the plugin reads from it, carries:
 
 ```text
-plugins/generic/ojsbrServices
+X-OJSBR-Timestamp: unix seconds
+X-OJSBR-Signature: base64(ed25519(timestamp + "\n" + sha256_hex(body)))
 ```
 
-O core do OJS **não** está neste disco. O PHP usa APIs idiomáticas da 3.5 (`PKPApplication`, `PluginRegistry`, `Hook`, `Handler`, `Role`, `Repo::submission()`, `Publication`). Depois de copiar para uma instalação 3.5, registrar com `lib/pkp/tools/installPluginVersion.php` (ou pela galeria) e habilitar no contexto da revista. Requer `ext-sodium` e `ext-curl`.
+A request is refused when the timestamp is outside ±5 minutes, when the hash of the body does not
+match, or when the signature does not verify against a trusted public key — the pin shipped in
+`keys/ojsbr.pub` or the one stored after a rotation, with the previous key accepted until its end
+date. There is no "accept without a signature" mode, and the editor cannot paste another key or
+switch the check off.
 
-## Branches
+Requests to the connector carry `Authorization: Bearer {token}` and go out through
+`Application::getHttpClient()`, the HTTP client the application configures — never a curl handle
+of the plugin's own.
 
-```text
-ojsbr-services
-  stable-3_3_0     -- OJS 3.3  (ainda não portado: hooks/DAO)
-  stable-3_4_0     -- OJS 3.4  (ainda não portado: hooks/DAO)
-  stable-3_5_0     -- OJS 3.5  (esta árvore)
-  master           -- cópia da última (3.5); default do clone
-```
+## Tests
 
-Release/tag por branch (`1.0.0-3.3`, `1.0.0-3.4`, `1.0.0-3.5`). Feature compartilhada (assinatura, heartbeat, payload do conector) entra primeiro na `stable-3_5_0` / `master` e é portada para as stables anteriores.
+- **PHPUnit** (`tests/`): what a signed request has to carry to be accepted (body, key, timestamp
+  window), the key material the pin is read from (PEM, base64, hexadecimal, raw, placeholder), the
+  proof of token, and the requests the plugin makes — JSON and multipart, with their headers —
+  against a mocked HTTP client, including a connector that cannot be reached. The signature checks
+  are skipped where ext-sodium is missing.
+- Verified on OJS 3.5.0.3.
 
-As três linhas existem (`stable-3_3_0`, `stable-3_4_0`, `stable-3_5_0`). A 3.5 cria OS, consulta status, recebe callback assinado (persiste ref **e** aplica galley/XML) e faz polling com a tela aberta. 3.3 e 3.4 portam o mesmo contrato HTTP, trocando só o PHP nativo:
+Tests are kept in the repository and are not part of the release package.
 
-* registro de hooks / menu editorial (`Hook::add` vs `HookRegistry`);
-* publication vs submission (3.3 quase só submission; 3.4+ publication corrente);
-* listagem de galleys e arquivos (API/DAO daquela linha);
-* upload de galley de resultado no callback;
-* `authorize()` / roles (Manager / Editor).
+## AI use
 
-A chave pública pinada fica no **mesmo path** em todas as branches: `keys/ojsbr.pub`.
+Generative AI (Claude, by Anthropic) was used to write and run tests, improve the code and bring
+it in line with PKP standards. Every change is reviewed and tested by OJSBR, which is responsible
+for the published releases.
 
-Árvore desta linha (3.5) — copiar o mesmo esqueleto nas branches 3.3/3.4 e ajustar só o PHP nativo:
+## Credits & authorship
 
-```text
-ojsbr-services/
-  version.xml
-  OjsbrServicesPlugin.php
-  index.php
-  settings.xml
-  keys/ojsbr.pub
-  locale/en/locale.po
-  locale/pt_BR/locale.po
-  pages/OjsbrServiceHandler.php
-  pages/OjsbrEditorHandler.php
-  classes/OjsbrHttp.php
-  classes/OjsbrSignature.php
-  templates/settings.tpl
-  templates/editor.tpl
-  README.md
-```
+- **Developed and maintained by** [OJSBR](https://ojsbr.com) — original plugin.
+- Distributed under the **GNU GPL v3**.
+
+## License
+
+Distributed under the **GNU GPL v3**. See [`LICENSE`](LICENSE) and `docs/COPYING`.
+
+---
+
+## 🇧🇷 Português
+
+Plugin genérico para o **Open Journal Systems (OJS)** que permite ao editor criar e acompanhar
+**ordens de serviço OJSBR** (marcação XML JATS) a partir da revista. Fala **somente** com o
+conector OJSBR, não calcula preço e **nunca assina**: a chave privada da OJSBR não existe neste
+plugin.
+
+> **Desenvolvido e mantido pela [OJSBR](https://ojsbr.com).**
+
+### Compatibilidade e branches
+
+| Versão do OJS | Branch | Release do plugin |
+|---------------|--------|-------------------|
+| OJS 3.5.x     | [`stable-3_5_0`](../../tree/stable-3_5_0) *(padrão)* | 1.0.1.0 |
+| OJS 3.4.x     | [`stable-3_4_0`](../../tree/stable-3_4_0) | ainda não portado |
+| OJS 3.3.x     | [`stable-3_3_0`](../../tree/stable-3_3_0) | ainda não portado |
+
+Instalar em `plugins/generic/ojsbrServices`. Requer **ext-sodium** (verificação de assinatura).
+
+### Testes
+
+- **PHPUnit** (`tests/`): o que um pedido assinado precisa trazer para ser aceito (corpo, chave,
+  janela de tempo), o material de chave que o pin aceita (PEM, base64, hexadecimal, bruto,
+  placeholder), a prova de posse do token e os pedidos que o plugin faz — JSON e multipart, com os
+  cabeçalhos — contra um cliente HTTP simulado, inclusive um conector fora do ar. As verificações
+  de assinatura são puladas onde falta a ext-sodium.
+- Verificado no OJS 3.5.0.3.
+
+Os testes ficam no repositório e não fazem parte do pacote da release.
+
+### Uso de IA
+
+Foi usada IA generativa (Claude, da Anthropic) para escrever e rodar testes, melhorar o código e
+alinhá-lo aos padrões da PKP. Toda mudança é revisada e testada pela OJSBR, que responde pelas
+releases publicadas.
+
+### Detalhes técnicos
 
 ## Settings
 
@@ -82,7 +146,7 @@ Referências de OS por submission ficam em `ojsbrServices.osPorSubmission` (inte
 | `chave` | `OjsbrServiceHandler` | público, Ed25519, sem login/CSRF |
 | `index` / `criar` / `status` | `OjsbrEditorHandler` | Manager / Sub-editor + CSRF |
 
-Proibido: `/ojsbr-services/...`, `$$$call$$$` / `ROUTE_COMPONENT`, `manage&verb=` como canal STNT.
+Proibido: `/ojsbrServices/...`, `$$$call$$$` / `ROUTE_COMPONENT`, `manage&verb=` como canal STNT.
 
 ## Confiança (STNT → plugin)
 

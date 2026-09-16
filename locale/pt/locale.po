@@ -1,0 +1,89 @@
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Last-Translator: OJSBR\n"
+"Language-Team: OJSBR\n"
+"Language: pt\n"
+
+msgid "plugins.generic.ojsbrServices.displayName"
+msgstr "OJSBR Services"
+
+msgid "plugins.generic.ojsbrServices.description"
+msgstr "Cria e acompanha ordens de serviço OJSBR (marcação XML JATS) a partir desta revista. Fala somente com o conector OJSBR."
+
+msgid "plugins.generic.ojsbrServices.settings"
+msgstr "Definições"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl"
+msgstr "URL do conector"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl.description"
+msgstr "URL base do conector OJSBR, ex.: https://ojs-plugin.ojsbr.com"
+
+msgid "plugins.generic.ojsbrServices.settings.token"
+msgstr "Token da revista"
+
+msgid "plugins.generic.ojsbrServices.settings.token.description"
+msgstr "Token colado do painel OJSBR (revista). Enviado como Bearer ao conector."
+
+msgid "plugins.generic.ojsbrServices.settings.saved"
+msgstr "Definições guardadas."
+
+msgid "plugins.generic.ojsbrServices.editor"
+msgstr "Ordens de serviço"
+
+msgid "plugins.generic.ojsbrServices.editor.title"
+msgstr "Ordens de serviço OJSBR"
+
+msgid "plugins.generic.ojsbrServices.editor.intro"
+msgstr "Selecione as submissões e envie como uma única ordem de marcação XML JATS. O preço é calculado pela OJSBR; este plugin não define valor."
+
+msgid "plugins.generic.ojsbrServices.editor.submit"
+msgstr "Criar ordem de serviço"
+
+msgid "plugins.generic.ojsbrServices.editor.noSubmissions"
+msgstr "Nenhuma submissão encontrada."
+
+msgid "plugins.generic.ojsbrServices.editor.missingSettings"
+msgstr "Configure a URL do conector e o token da revista nas definições do plugin."
+
+msgid "plugins.generic.ojsbrServices.editor.missingItems"
+msgstr "Selecione ao menos uma submissão."
+
+msgid "plugins.generic.ojsbrServices.editor.created"
+msgstr "Ordem de serviço criada: {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.blockedCredits"
+msgstr "Aguardando créditos (faltam R$ {$faltante}). A OJSBR vai regularizar."
+
+msgid "plugins.generic.ojsbrServices.editor.os"
+msgstr "OS"
+
+msgid "plugins.generic.ojsbrServices.editor.status"
+msgstr "Status"
+
+msgid "plugins.generic.ojsbrServices.editor.refresh"
+msgstr "Atualizar status"
+
+msgid "plugins.generic.ojsbrServices.editor.osTitle"
+msgstr "Ordem de serviço {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.backToList"
+msgstr "Voltar às submissões"
+
+msgid "plugins.generic.ojsbrServices.editor.pendingFiles"
+msgstr "Há arquivos ainda não gravados no GED; a OJSBR vai regularizar."
+
+msgid "plugins.generic.ojsbrServices.editor.signatureFailed"
+msgstr "A assinatura da resposta do conector é inválida. A ordem não foi aceita."
+
+msgid "plugins.generic.ojsbrServices.editor.uploadFailed"
+msgstr "Falha ao enviar arquivos da submissão {$id}."
+
+msgid "plugins.generic.ojsbrServices.error.unauthorized"
+msgstr "Não autorizado."
+
+msgid "plugins.generic.ojsbrServices.error.badRequest"
+msgstr "Pedido inválido."

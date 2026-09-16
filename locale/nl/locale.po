@@ -1,0 +1,89 @@
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Last-Translator: OJSBR\n"
+"Language-Team: OJSBR\n"
+"Language: nl\n"
+
+msgid "plugins.generic.ojsbrServices.displayName"
+msgstr "OJSBR Services"
+
+msgid "plugins.generic.ojsbrServices.description"
+msgstr "Maakt en volgt OJSBR-serviceopdrachten (JATS XML-markup) vanuit dit tijdschrift. Praat uitsluitend met de OJSBR-connector."
+
+msgid "plugins.generic.ojsbrServices.settings"
+msgstr "Instellingen"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl"
+msgstr "Connector-URL"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl.description"
+msgstr "Basis-URL van de OJSBR-connector, bijv.: https://ojs-plugin.ojsbr.com"
+
+msgid "plugins.generic.ojsbrServices.settings.token"
+msgstr "Token van het tijdschrift"
+
+msgid "plugins.generic.ojsbrServices.settings.token.description"
+msgstr "Token gekopieerd uit het OJSBR-paneel (tijdschrift). Wordt als Bearer naar de connector gestuurd."
+
+msgid "plugins.generic.ojsbrServices.settings.saved"
+msgstr "Instellingen opgeslagen."
+
+msgid "plugins.generic.ojsbrServices.editor"
+msgstr "Serviceopdrachten"
+
+msgid "plugins.generic.ojsbrServices.editor.title"
+msgstr "OJSBR-serviceopdrachten"
+
+msgid "plugins.generic.ojsbrServices.editor.intro"
+msgstr "Selecteer inzendingen en stuur ze als één opdracht voor JATS XML-markup. De prijs wordt door OJSBR berekend; deze plugin bepaalt geen bedragen."
+
+msgid "plugins.generic.ojsbrServices.editor.submit"
+msgstr "Serviceopdracht aanmaken"
+
+msgid "plugins.generic.ojsbrServices.editor.noSubmissions"
+msgstr "Geen inzendingen gevonden."
+
+msgid "plugins.generic.ojsbrServices.editor.missingSettings"
+msgstr "Vul de connector-URL en het token van het tijdschrift in bij de plugin-instellingen."
+
+msgid "plugins.generic.ojsbrServices.editor.missingItems"
+msgstr "Selecteer ten minste één inzending."
+
+msgid "plugins.generic.ojsbrServices.editor.created"
+msgstr "Serviceopdracht aangemaakt: {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.blockedCredits"
+msgstr "Wachten op tegoed (er ontbreekt R$ {$faltante}). OJSBR lost dit op."
+
+msgid "plugins.generic.ojsbrServices.editor.os"
+msgstr "Opdracht"
+
+msgid "plugins.generic.ojsbrServices.editor.status"
+msgstr "Status"
+
+msgid "plugins.generic.ojsbrServices.editor.refresh"
+msgstr "Status verversen"
+
+msgid "plugins.generic.ojsbrServices.editor.osTitle"
+msgstr "Serviceopdracht {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.backToList"
+msgstr "Terug naar de inzendingen"
+
+msgid "plugins.generic.ojsbrServices.editor.pendingFiles"
+msgstr "Er zijn bestanden die nog niet in het DMS staan; OJSBR lost dit op."
+
+msgid "plugins.generic.ojsbrServices.editor.signatureFailed"
+msgstr "De handtekening van het antwoord van de connector is ongeldig. De opdracht is niet geaccepteerd."
+
+msgid "plugins.generic.ojsbrServices.editor.uploadFailed"
+msgstr "Verzenden van de bestanden van inzending {$id} is mislukt."
+
+msgid "plugins.generic.ojsbrServices.error.unauthorized"
+msgstr "Niet geautoriseerd."
+
+msgid "plugins.generic.ojsbrServices.error.badRequest"
+msgstr "Ongeldig verzoek."

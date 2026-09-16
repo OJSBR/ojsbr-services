@@ -3,25 +3,36 @@
 /**
  * @file plugins/generic/ojsbrServices/classes/OjsbrHttp.php
  *
- * Copyright (c) 2026 OJSBR
+ * Copyright (c) 2026 OJSBR (https://ojsbr.com)
+ * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @brief Cliente HTTP do plugin → conector (Bearer token). Não assina Ed25519.
+ * @brief The plugin's HTTP client to the connector (Bearer token). It never
+ *        signs anything with the OJSBR Ed25519 private key: that key does not
+ *        exist here.
+ *
+ *        Requests go through Application::getHttpClient(), the client the
+ *        application configures (proxy, user agent, TLS), never through curl
+ *        handles of our own.
  */
 
 namespace APP\plugins\generic\ojsbrServices\classes;
 
+use APP\core\Application;
+use GuzzleHttp\Exception\GuzzleException;
+use Psr\Http\Message\ResponseInterface;
+
 class OjsbrHttp
 {
     public const TIMEOUT_SECONDS = 120;
-    public const MAX_BODY_BYTES = 33554432; // 32 MiB
+    public const CONNECT_TIMEOUT_SECONDS = 15;
 
     /**
      * @return array{status:int,body:string,headers:array<string,string>}
      */
     public static function postJson(string $url, array $payload, string $token): array
     {
-        return self::request('POST', $url, $token, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}', [
-            'Content-Type: application/json',
+        return self::send('POST', $url, $token, [
+            'json' => $payload,
         ]);
     }
 
@@ -30,107 +41,85 @@ class OjsbrHttp
      */
     public static function get(string $url, string $token): array
     {
-        return self::request('GET', $url, $token, null, []);
+        return self::send('GET', $url, $token, []);
     }
 
     /**
-     * Multipart de um artigo. Cada parte: role (+ galleyId) + arquivo.
+     * The files of one article, as a multipart request: each part carries its
+     * role (and galley, and locale) next to the file itself.
      *
      * @param array<int,array{role:string,fileName:string,contents:string,galleyId?:?string,locale?:?string}> $files
+     *
      * @return array{status:int,body:string,headers:array<string,string>}
      */
     public static function postFiles(string $url, string $token, array $files): array
     {
-        $boundary = '----ojsbr' . bin2hex(random_bytes(16));
-        $body = '';
-        foreach ($files as $i => $file) {
-            $role = (string) ($file['role'] ?? '');
-            $fileName = (string) ($file['fileName'] ?? 'file');
-            $contents = (string) ($file['contents'] ?? '');
-            $body .= self::multipartField($boundary, 'role', $role);
+        $multipart = [];
+        foreach ($files as $file) {
+            $multipart[] = ['name' => 'role', 'contents' => (string) ($file['role'] ?? '')];
             if (!empty($file['galleyId'])) {
-                $body .= self::multipartField($boundary, 'galleyId', (string) $file['galleyId']);
+                $multipart[] = ['name' => 'galleyId', 'contents' => (string) $file['galleyId']];
             }
             if (!empty($file['locale'])) {
-                $body .= self::multipartField($boundary, 'locale', (string) $file['locale']);
+                $multipart[] = ['name' => 'locale', 'contents' => (string) $file['locale']];
             }
-            $safeName = str_replace(["\r", "\n", '"'], '', $fileName);
-            $body .= "--{$boundary}\r\n";
-            $body .= 'Content-Disposition: form-data; name="file"; filename="' . $safeName . '"' . "\r\n";
-            $body .= "Content-Type: application/octet-stream\r\n\r\n";
-            $body .= $contents . "\r\n";
-            unset($files[$i]['contents']);
+            $multipart[] = [
+                'name' => 'file',
+                'contents' => (string) ($file['contents'] ?? ''),
+                // A line break or a quote in the name would break the part header.
+                'filename' => str_replace(["\r", "\n", '"'], '', (string) ($file['fileName'] ?? 'file')),
+                'headers' => ['Content-Type' => 'application/octet-stream'],
+            ];
         }
-        $body .= "--{$boundary}--\r\n";
 
-        return self::request('POST', $url, $token, $body, [
-            'Content-Type: multipart/form-data; boundary=' . $boundary,
-        ]);
+        return self::send('POST', $url, $token, ['multipart' => $multipart]);
     }
 
     /**
-     * @param string[] $extraHeaders
+     * @param array<string,mixed> $options Body options of the request (json, multipart)
+     *
      * @return array{status:int,body:string,headers:array<string,string>}
      */
-    private static function request(string $method, string $url, string $token, ?string $body, array $extraHeaders): array
+    private static function send(string $method, string $url, string $token, array $options): array
     {
-        $headers = array_merge([
-            'Accept: application/json',
-            'Authorization: Bearer ' . $token,
-            'X-OJSBR-Token: ' . $token,
-        ], $extraHeaders);
+        $options = array_merge($options, [
+            'headers' => [
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $token,
+                'X-OJSBR-Token' => $token,
+            ],
+            'timeout' => self::TIMEOUT_SECONDS,
+            'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
+            // The answer is read as it comes: a redirect or an error status is
+            // for the caller to deal with, not for the client to follow or throw.
+            'allow_redirects' => false,
+            'http_errors' => false,
+        ]);
 
-        $headerBag = [];
-        $ch = curl_init($url);
-        if ($ch === false) {
+        try {
+            $response = Application::get()->getHttpClient()->request($method, $url, $options);
+        } catch (GuzzleException $exception) {
+            error_log('OJSBR Services: ' . $method . ' ' . $url . ' failed: ' . $exception->getMessage());
             return ['status' => 0, 'body' => '', 'headers' => []];
         }
 
-        $opts = [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER => true,
-            CURLOPT_CUSTOMREQUEST => $method,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_TIMEOUT => self::TIMEOUT_SECONDS,
-            CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_MAXFILESIZE => self::MAX_BODY_BYTES,
-        ];
-        if ($body !== null) {
-            $opts[CURLOPT_POSTFIELDS] = $body;
-        }
-        curl_setopt_array($ch, $opts);
+        return self::result($response);
+    }
 
-        $raw = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        curl_close($ch);
-
-        if ($raw === false) {
-            return ['status' => $status ?: 0, 'body' => '', 'headers' => []];
-        }
-
-        $headerBlock = substr($raw, 0, $headerSize);
-        $responseBody = substr($raw, $headerSize);
-        foreach (preg_split("/\r\n|\n|\r/", $headerBlock) ?: [] as $line) {
-            if (!str_contains($line, ':')) {
-                continue;
-            }
-            [$name, $value] = explode(':', $line, 2);
-            $headerBag[trim($name)] = trim($value);
+    /**
+     * @return array{status:int,body:string,headers:array<string,string>}
+     */
+    private static function result(ResponseInterface $response): array
+    {
+        $headers = [];
+        foreach ($response->getHeaders() as $name => $values) {
+            $headers[$name] = implode(', ', $values);
         }
 
         return [
-            'status' => $status,
-            'body' => $responseBody,
-            'headers' => $headerBag,
+            'status' => $response->getStatusCode(),
+            'body' => (string) $response->getBody(),
+            'headers' => $headers,
         ];
-    }
-
-    private static function multipartField(string $boundary, string $name, string $value): string
-    {
-        return "--{$boundary}\r\n"
-            . 'Content-Disposition: form-data; name="' . $name . '"' . "\r\n\r\n"
-            . $value . "\r\n";
     }
 }

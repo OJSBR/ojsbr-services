@@ -1,0 +1,116 @@
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Last-Translator: OJSBR\n"
+"Language-Team: OJSBR\n"
+"Language: tr\n"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.displayName"
+msgstr "OJSBR Services"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.description"
+msgstr "Create and follow OJSBR service orders (JATS XML markup) from this journal. Talks only to the OJSBR connector."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.settings"
+msgstr "Settings"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl"
+msgstr "Connector URL"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl.description"
+msgstr "Base URL of the OJSBR connector, e.g. https://ojs-plugin.ojsbr.com"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.settings.token"
+msgstr "Journal token"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.settings.token.description"
+msgstr "Token copied from the OJSBR panel (revista). Sent as Bearer to the connector."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.settings.saved"
+msgstr "Settings saved."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor"
+msgstr "Service orders"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.title"
+msgstr "OJSBR service orders"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.intro"
+msgstr "Select submissions and send them as a single JATS XML service order. Price is calculated by OJSBR; this plugin does not set it."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.submit"
+msgstr "Create service order"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.noSubmissions"
+msgstr "No submissions found."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.missingSettings"
+msgstr "Configure the connector URL and journal token in the plugin settings first."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.missingItems"
+msgstr "Select at least one submission."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.created"
+msgstr "Service order created: {$numero}"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.blockedCredits"
+msgstr "Waiting for credits (R$ {$faltante} outstanding). OJSBR will regularize this."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.os"
+msgstr "OS"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.status"
+msgstr "Status"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.refresh"
+msgstr "Refresh status"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.osTitle"
+msgstr "Service order {$numero}"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.backToList"
+msgstr "Back to submissions"
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.pendingFiles"
+msgstr "Some files are still pending in GED storage; OJSBR will regularize this."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.signatureFailed"
+msgstr "Connector response signature was invalid. The order was not accepted."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.editor.uploadFailed"
+msgstr "File upload failed for submission {$id}."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.error.unauthorized"
+msgstr "Unauthorized."
+
+#, fuzzy
+msgid "plugins.generic.ojsbrServices.error.badRequest"
+msgstr "Invalid request."

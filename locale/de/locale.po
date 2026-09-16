@@ -1,0 +1,89 @@
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Last-Translator: OJSBR\n"
+"Language-Team: OJSBR\n"
+"Language: de\n"
+
+msgid "plugins.generic.ojsbrServices.displayName"
+msgstr "OJSBR Services"
+
+msgid "plugins.generic.ojsbrServices.description"
+msgstr "Erstellt und verfolgt OJSBR-Serviceaufträge (JATS-XML-Auszeichnung) aus dieser Zeitschrift heraus. Spricht ausschließlich mit dem OJSBR-Connector."
+
+msgid "plugins.generic.ojsbrServices.settings"
+msgstr "Einstellungen"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl"
+msgstr "Connector-URL"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl.description"
+msgstr "Basis-URL des OJSBR-Connectors, z. B.: https://ojs-plugin.ojsbr.com"
+
+msgid "plugins.generic.ojsbrServices.settings.token"
+msgstr "Token der Zeitschrift"
+
+msgid "plugins.generic.ojsbrServices.settings.token.description"
+msgstr "Aus dem OJSBR-Panel (Zeitschrift) kopiertes Token. Wird als Bearer an den Connector gesendet."
+
+msgid "plugins.generic.ojsbrServices.settings.saved"
+msgstr "Einstellungen gespeichert."
+
+msgid "plugins.generic.ojsbrServices.editor"
+msgstr "Serviceaufträge"
+
+msgid "plugins.generic.ojsbrServices.editor.title"
+msgstr "OJSBR-Serviceaufträge"
+
+msgid "plugins.generic.ojsbrServices.editor.intro"
+msgstr "Wählen Sie Einreichungen aus und senden Sie sie als einen einzigen Auftrag zur JATS-XML-Auszeichnung. Den Preis berechnet OJSBR; dieses Plugin legt keine Beträge fest."
+
+msgid "plugins.generic.ojsbrServices.editor.submit"
+msgstr "Serviceauftrag anlegen"
+
+msgid "plugins.generic.ojsbrServices.editor.noSubmissions"
+msgstr "Keine Einreichungen gefunden."
+
+msgid "plugins.generic.ojsbrServices.editor.missingSettings"
+msgstr "Tragen Sie die Connector-URL und das Token der Zeitschrift in den Plugin-Einstellungen ein."
+
+msgid "plugins.generic.ojsbrServices.editor.missingItems"
+msgstr "Wählen Sie mindestens eine Einreichung aus."
+
+msgid "plugins.generic.ojsbrServices.editor.created"
+msgstr "Serviceauftrag angelegt: {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.blockedCredits"
+msgstr "Warten auf Guthaben (es fehlen R$ {$faltante}). OJSBR wird das klären."
+
+msgid "plugins.generic.ojsbrServices.editor.os"
+msgstr "Auftrag"
+
+msgid "plugins.generic.ojsbrServices.editor.status"
+msgstr "Status"
+
+msgid "plugins.generic.ojsbrServices.editor.refresh"
+msgstr "Status aktualisieren"
+
+msgid "plugins.generic.ojsbrServices.editor.osTitle"
+msgstr "Serviceauftrag {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.backToList"
+msgstr "Zurück zu den Einreichungen"
+
+msgid "plugins.generic.ojsbrServices.editor.pendingFiles"
+msgstr "Es sind noch Dateien nicht im DMS gespeichert; OJSBR wird das klären."
+
+msgid "plugins.generic.ojsbrServices.editor.signatureFailed"
+msgstr "Die Signatur der Antwort des Connectors ist ungültig. Der Auftrag wurde nicht angenommen."
+
+msgid "plugins.generic.ojsbrServices.editor.uploadFailed"
+msgstr "Die Dateien der Einreichung {$id} konnten nicht gesendet werden."
+
+msgid "plugins.generic.ojsbrServices.error.unauthorized"
+msgstr "Nicht autorisiert."
+
+msgid "plugins.generic.ojsbrServices.error.badRequest"
+msgstr "Ungültige Anfrage."

@@ -3,9 +3,11 @@
 /**
  * @file plugins/generic/ojsbrServices/OjsbrServicesPlugin.php
  *
- * Copyright (c) 2026 OJSBR
+ * Copyright (c) 2026 OJSBR (https://ojsbr.com)
+ * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @brief GenericPlugin OJS 3.5 — page `ojsbr`, settings, pin e rotação de pública.
+ * @brief The generic plugin: the `ojsbr` page, the settings, the pinned public
+ *        key and its rotation.
  */
 
 namespace APP\plugins\generic\ojsbrServices;
@@ -53,8 +55,9 @@ class OjsbrServicesPlugin extends GenericPlugin
     }
 
     /**
-     * lazy-load: array vazio = todas as ops quando o plugin está enabled
-     * (LoadHandler precisa estar registrado no pedido da page `ojsbr`).
+     * Lazy load: an empty array means every operation while the plugin is
+     * enabled (LoadHandler has to be registered on the request of the `ojsbr`
+     * page).
      */
     public function registerOn(): array
     {
@@ -177,7 +180,7 @@ class OjsbrServicesPlugin extends GenericPlugin
     }
 
     /**
-     * Page `ojsbr` — getName() do plugin NÃO entra na URL.
+     * The `ojsbr` page: the name of the plugin is not part of the URL.
      *
      * @param array $args [page, op, handlerFile, &handler]
      */
@@ -225,7 +228,8 @@ class OjsbrServicesPlugin extends GenericPlugin
     }
 
     /**
-     * Públicas confiáveis: vigente persistida (ou pin) + anterior até dtFim.
+     * The public keys this journal trusts: the one in force (or the pinned one)
+     * and the previous one until its end date.
      *
      * @return string[]
      */
@@ -255,7 +259,8 @@ class OjsbrServicesPlugin extends GenericPlugin
     }
 
     /**
-     * Persiste a pública distribuída pelo painel (não aparece na UI).
+     * Stores the public key handed out by the panel; it is not shown in the
+     * interface.
      */
     public function persistPublica(int $contextId, string $versao, string $publica, ?string $dtFim): void
     {
@@ -301,7 +306,7 @@ class OjsbrServicesPlugin extends GenericPlugin
     }
 
     /**
-     * Verifica assinatura Ed25519 de um pedido ou resposta STNT.
+     * Verifies the Ed25519 signature of a request or of an answer.
      */
     public function verifySignedBody(int $contextId, ?string $timestamp, ?string $signature, string $body): bool
     {

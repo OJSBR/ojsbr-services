@@ -3,9 +3,12 @@
 /**
  * @file plugins/generic/ojsbrServices/pages/OjsbrServiceHandler.php
  *
- * Copyright (c) 2026 OJSBR
+ * Copyright (c) 2026 OJSBR (https://ojsbr.com)
+ * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @brief Ops públicas heartbeat|callback|chave. Auth = Ed25519, sem login/CSRF.
+ * @brief The public operations — heartbeat, callback and key. They are
+ *        authenticated by the Ed25519 signature, not by a session: there is no
+ *        login and no CSRF token to present.
  */
 
 namespace APP\plugins\generic\ojsbrServices\pages;
@@ -24,7 +27,8 @@ class OjsbrServiceHandler extends Handler
     }
 
     /**
-     * Público: o conector não manda cookie. Sem UserRequired / Role / CSRF.
+     * Public: the connector sends no cookie, so no UserRequired, no role and no
+     * CSRF policy. What authenticates it is the signature of the request.
      *
      * @param Request $request
      * @param array $args
@@ -37,7 +41,7 @@ class OjsbrServiceHandler extends Handler
 
     /**
      * POST {baseUrl}/index.php/{journalPath}/ojsbr/heartbeat
-     * Pedido assinado. Resposta 200 SEM Ed25519.
+     * The request is signed; the answer is a plain 200 with no signature.
      */
     public function heartbeat(array $args, Request $request): void
     {
@@ -61,7 +65,8 @@ class OjsbrServiceHandler extends Handler
     }
 
     /**
-     * POST …/ojsbr/callback — status + aplica XML/galley na publication corrente.
+     * POST …/ojsbr/callback — records the status and puts the XML and the
+     * galley onto the current publication.
      */
     public function callback(array $args, Request $request): void
     {
@@ -107,7 +112,8 @@ class OjsbrServiceHandler extends Handler
     }
 
     /**
-     * POST …/ojsbr/chave — { versao, publica, dtFim }. Persiste pública, devolve { versao, hmac }.
+     * POST …/ojsbr/chave — { versao, publica, dtFim }: stores the public key and
+     * answers with { versao, hmac }.
      */
     public function chave(array $args, Request $request): void
     {

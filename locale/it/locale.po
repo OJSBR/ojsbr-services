@@ -1,0 +1,89 @@
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Last-Translator: OJSBR\n"
+"Language-Team: OJSBR\n"
+"Language: it\n"
+
+msgid "plugins.generic.ojsbrServices.displayName"
+msgstr "OJSBR Services"
+
+msgid "plugins.generic.ojsbrServices.description"
+msgstr "Crea e segue gli ordini di servizio OJSBR (marcatura XML JATS) da questa rivista. Parla solo con il connettore OJSBR."
+
+msgid "plugins.generic.ojsbrServices.settings"
+msgstr "Impostazioni"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl"
+msgstr "URL del connettore"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl.description"
+msgstr "URL di base del connettore OJSBR, ad es.: https://ojs-plugin.ojsbr.com"
+
+msgid "plugins.generic.ojsbrServices.settings.token"
+msgstr "Token della rivista"
+
+msgid "plugins.generic.ojsbrServices.settings.token.description"
+msgstr "Token copiato dal pannello OJSBR (rivista). Inviato come Bearer al connettore."
+
+msgid "plugins.generic.ojsbrServices.settings.saved"
+msgstr "Impostazioni salvate."
+
+msgid "plugins.generic.ojsbrServices.editor"
+msgstr "Ordini di servizio"
+
+msgid "plugins.generic.ojsbrServices.editor.title"
+msgstr "Ordini di servizio OJSBR"
+
+msgid "plugins.generic.ojsbrServices.editor.intro"
+msgstr "Seleziona le proposte e inviale come un unico ordine di marcatura XML JATS. Il prezzo è calcolato da OJSBR; questo plugin non definisce importi."
+
+msgid "plugins.generic.ojsbrServices.editor.submit"
+msgstr "Crea ordine di servizio"
+
+msgid "plugins.generic.ojsbrServices.editor.noSubmissions"
+msgstr "Nessuna proposta trovata."
+
+msgid "plugins.generic.ojsbrServices.editor.missingSettings"
+msgstr "Configura l'URL del connettore e il token della rivista nelle impostazioni del plugin."
+
+msgid "plugins.generic.ojsbrServices.editor.missingItems"
+msgstr "Seleziona almeno una proposta."
+
+msgid "plugins.generic.ojsbrServices.editor.created"
+msgstr "Ordine di servizio creato: {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.blockedCredits"
+msgstr "In attesa di crediti (mancano R$ {$faltante}). OJSBR provvederà."
+
+msgid "plugins.generic.ojsbrServices.editor.os"
+msgstr "Ordine"
+
+msgid "plugins.generic.ojsbrServices.editor.status"
+msgstr "Stato"
+
+msgid "plugins.generic.ojsbrServices.editor.refresh"
+msgstr "Aggiorna stato"
+
+msgid "plugins.generic.ojsbrServices.editor.osTitle"
+msgstr "Ordine di servizio {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.backToList"
+msgstr "Torna alle proposte"
+
+msgid "plugins.generic.ojsbrServices.editor.pendingFiles"
+msgstr "Ci sono file non ancora salvati nel GED; OJSBR provvederà."
+
+msgid "plugins.generic.ojsbrServices.editor.signatureFailed"
+msgstr "La firma della risposta del connettore non è valida. L'ordine non è stato accettato."
+
+msgid "plugins.generic.ojsbrServices.editor.uploadFailed"
+msgstr "Invio dei file della proposta {$id} non riuscito."
+
+msgid "plugins.generic.ojsbrServices.error.unauthorized"
+msgstr "Non autorizzato."
+
+msgid "plugins.generic.ojsbrServices.error.badRequest"
+msgstr "Richiesta non valida."

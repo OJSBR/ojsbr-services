@@ -3,9 +3,11 @@
 /**
  * @file plugins/generic/ojsbrServices/classes/OjsbrGalleyApplier.php
  *
- * Copyright (c) 2026 OJSBR
+ * Copyright (c) 2026 OJSBR (https://ojsbr.com)
+ * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @brief Aplica XML/galley de resultado na publication corrente (OJS 3.5).
+ * @brief Puts the XML and the galley that came back onto the current
+ *        publication.
  */
 
 namespace APP\plugins\generic\ojsbrServices\classes;

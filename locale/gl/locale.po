@@ -1,0 +1,89 @@
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Last-Translator: OJSBR\n"
+"Language-Team: OJSBR\n"
+"Language: gl\n"
+
+msgid "plugins.generic.ojsbrServices.displayName"
+msgstr "OJSBR Services"
+
+msgid "plugins.generic.ojsbrServices.description"
+msgstr "Crea e fai o seguimento de ordes de servizo OJSBR (marcado XML JATS) desde esta revista. Só fala co conector OJSBR."
+
+msgid "plugins.generic.ojsbrServices.settings"
+msgstr "Configuración"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl"
+msgstr "URL do conector"
+
+msgid "plugins.generic.ojsbrServices.settings.connectorUrl.description"
+msgstr "URL base do conector OJSBR, p. ex.: https://ojs-plugin.ojsbr.com"
+
+msgid "plugins.generic.ojsbrServices.settings.token"
+msgstr "Token da revista"
+
+msgid "plugins.generic.ojsbrServices.settings.token.description"
+msgstr "Token copiado do panel OJSBR (revista). Envíase como Bearer ao conector."
+
+msgid "plugins.generic.ojsbrServices.settings.saved"
+msgstr "Configuración gardada."
+
+msgid "plugins.generic.ojsbrServices.editor"
+msgstr "Ordes de servizo"
+
+msgid "plugins.generic.ojsbrServices.editor.title"
+msgstr "Ordes de servizo OJSBR"
+
+msgid "plugins.generic.ojsbrServices.editor.intro"
+msgstr "Seleccione os envíos e remítaos como unha única orde de marcado XML JATS. O prezo calcúlao OJSBR; este módulo non fixa importes."
+
+msgid "plugins.generic.ojsbrServices.editor.submit"
+msgstr "Crear orde de servizo"
+
+msgid "plugins.generic.ojsbrServices.editor.noSubmissions"
+msgstr "Non se atoparon envíos."
+
+msgid "plugins.generic.ojsbrServices.editor.missingSettings"
+msgstr "Configure o URL do conector e o token da revista na configuración do módulo."
+
+msgid "plugins.generic.ojsbrServices.editor.missingItems"
+msgstr "Seleccione polo menos un envío."
+
+msgid "plugins.generic.ojsbrServices.editor.created"
+msgstr "Orde de servizo creada: {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.blockedCredits"
+msgstr "Agardando créditos (faltan R$ {$faltante}). OJSBR vai regularizalo."
+
+msgid "plugins.generic.ojsbrServices.editor.os"
+msgstr "Orde"
+
+msgid "plugins.generic.ojsbrServices.editor.status"
+msgstr "Estado"
+
+msgid "plugins.generic.ojsbrServices.editor.refresh"
+msgstr "Actualizar estado"
+
+msgid "plugins.generic.ojsbrServices.editor.osTitle"
+msgstr "Orde de servizo {$numero}"
+
+msgid "plugins.generic.ojsbrServices.editor.backToList"
+msgstr "Volver aos envíos"
+
+msgid "plugins.generic.ojsbrServices.editor.pendingFiles"
+msgstr "Hai ficheiros aínda non gardados no GED; OJSBR vai regularizalo."
+
+msgid "plugins.generic.ojsbrServices.editor.signatureFailed"
+msgstr "A sinatura da resposta do conector non é válida. A orde non foi aceptada."
+
+msgid "plugins.generic.ojsbrServices.editor.uploadFailed"
+msgstr "Produciuse un fallo ao enviar os ficheiros do envío {$id}."
+
+msgid "plugins.generic.ojsbrServices.error.unauthorized"
+msgstr "Non autorizado."
+
+msgid "plugins.generic.ojsbrServices.error.badRequest"
+msgstr "Solicitude non válida."

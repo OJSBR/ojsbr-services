@@ -3,13 +3,14 @@
 /**
  * @file plugins/generic/ojsbrServices/classes/OjsbrSignature.php
  *
- * Copyright (c) 2026 OJSBR
+ * Copyright (c) 2026 OJSBR (https://ojsbr.com)
+ * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @brief Verifica X-OJSBR-Timestamp + X-OJSBR-Signature (Ed25519).
+ * @brief Verifies X-OJSBR-Timestamp and X-OJSBR-Signature (Ed25519).
  *
- * O plugin NUNCA assina com a privada OJSBR — ela não existe aqui.
- * Mensagem: timestamp + "\n" + sha256_hex(body)
- * Assinatura: base64(ed25519(mensagem))
+ * The plugin never signs anything with the OJSBR private key: that key does not
+ * exist here. The message signed is timestamp + "\n" + sha256 of the body in
+ * hexadecimal, and the signature travels as base64.
  */
 
 namespace APP\plugins\generic\ojsbrServices\classes;
@@ -23,7 +24,7 @@ class OjsbrSignature
     public const SKEW_SECONDS = 300;
 
     /**
-     * Lê timestamp e assinatura de um Request PKP (pedido STNT → plugin).
+     * Reads the timestamp and the signature of a request made to the plugin.
      *
      * @return array{timestamp:?string,signature:?string}
      */
@@ -44,7 +45,7 @@ class OjsbrSignature
     }
 
     /**
-     * Lê timestamp e assinatura de headers HTTP (resposta do conector).
+     * Reads the timestamp and the signature of an answer from the connector.
      *
      * @param array<string,string|string[]> $headers
      * @return array{timestamp:?string,signature:?string}
@@ -97,8 +98,9 @@ class OjsbrSignature
     }
 
     /**
-     * HMAC-SHA256(pluginToken, nonce) em base64 — prova de posse do token
-     * (resposta de heartbeat/chave; sem Ed25519).
+     * HMAC-SHA256 of the nonce with the plugin's token, in base64: the proof
+     * that this installation holds the token. Answers to the heartbeat and to a
+     * key rotation carry it; no Ed25519 is involved.
      */
     public static function hmacToken(string $pluginToken, string $nonce): string
     {
@@ -106,7 +108,8 @@ class OjsbrSignature
     }
 
     /**
-     * Extrai 32 bytes de chave pública Ed25519 de PEM SPKI, base64, hex ou raw.
+     * The 32 bytes of an Ed25519 public key, from SPKI PEM, base64, hexadecimal
+     * or raw material.
      */
     public static function extractPublicKey(string $material): ?string
     {

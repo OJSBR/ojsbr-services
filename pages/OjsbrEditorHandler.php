@@ -3,9 +3,11 @@
 /**
  * @file plugins/generic/ojsbrServices/pages/OjsbrEditorHandler.php
  *
- * Copyright (c) 2026 OJSBR
+ * Copyright (c) 2026 OJSBR (https://ojsbr.com)
+ * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @brief UI Manager/Editor: lista submissions, cria OS no conector, sobe arquivos.
+ * @brief The screen managers and editors use: lists the submissions, opens a
+ *        service order on the connector and uploads the files.
  */
 
 namespace APP\plugins\generic\ojsbrServices\pages;
@@ -51,7 +53,7 @@ class OjsbrEditorHandler extends Handler
     }
 
     /**
-     * Lista submissions + referência de OS já persistida.
+     * The submissions, each with the service order already recorded for it.
      */
     public function index(array $args, Request $request): void
     {
@@ -80,7 +82,8 @@ class OjsbrEditorHandler extends Handler
     }
 
     /**
-     * POST: monta JSON do create, chama o conector, sobe arquivos em série.
+     * POST: builds the create payload, calls the connector and uploads the
+     * files one after another.
      */
     public function criar(array $args, Request $request): void
     {
@@ -160,7 +163,8 @@ class OjsbrEditorHandler extends Handler
     }
 
     /**
-     * POST: consulta GET /plugin/v1/ordens/:numero (resposta assinada) e atualiza refs.
+     * POST: asks the connector for the order (a signed answer) and updates what
+     * is recorded for the submission.
      */
     public function status(array $args, Request $request): void
     {
@@ -192,7 +196,7 @@ class OjsbrEditorHandler extends Handler
     }
 
     /**
-     * Tela da OS — polling só aqui (não na lista).
+     * The screen of one service order: only this screen polls, never the list.
      */
     public function os(array $args, Request $request): void
     {
@@ -230,7 +234,7 @@ class OjsbrEditorHandler extends Handler
     }
 
     /**
-     * GET JSON — polling só com a tela aberta. Sem CSRF.
+     * The JSON the screen polls while it is open. No CSRF token: it only reads.
      */
     public function poll(array $args, Request $request): void
     {
